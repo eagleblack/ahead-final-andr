@@ -1,0 +1,113 @@
+// components/CustomHeaderTabs.js
+import React from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const { width } = Dimensions.get("window");
+
+const TAB_LABELS = {
+  Post: "CREW Q&A",
+  News: "NEWS ROOM",
+  Trending: "HIGHLIGHT",
+};
+
+const CustomHeaderTabs = ({
+  tabs = [],
+  activeTab,
+  setActiveTab,
+  colors,
+}) => {
+  const tabWidth = width / tabs.length;
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          paddingTop: insets.top > 0 ? 4 : 0,
+        },
+      ]}
+    >
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab;
+
+        return (
+          <TouchableOpacity
+            key={tab}
+            onPress={() => setActiveTab(tab)}
+            activeOpacity={0.8}
+            style={[styles.tabWrapper, { width: tabWidth }]}
+          >
+           <View
+  style={[
+    styles.tabInner,
+    {
+      backgroundColor: isActive
+        ? colors.primary + "20"
+        : "transparent",
+      borderWidth: isActive ? 1 : 0,
+      borderColor: isActive ? colors.primary : "transparent",
+      borderRadius:isActive ? 10 : 0,
+    },
+  ]}
+>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isActive
+                      ? colors.textSecondary
+                      : colors.textSecondary,
+                  },
+                ]}
+              >
+                {(TAB_LABELS[tab] || tab).toUpperCase()}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    height: 50,
+    alignItems: "center",
+    
+  },
+
+  tabWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+   
+  },
+
+  tabInner: {
+    height: 36,
+    minWidth: 90,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  label: {
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+});
+
+export default CustomHeaderTabs;

@@ -1,0 +1,22 @@
+<resources>
+
+    <!-- Base application theme. -->
+   <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+
+        <!-- Required for changing status bar color -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowTranslucentStatus">false</item>
+
+        <!-- Let RN / Native Module control the color -->
+    
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+  
+        <!-- Don't force light or dark — we change this dynamically -->
+   
+
+    </style>
+</resources>

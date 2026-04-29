@@ -108,31 +108,42 @@ export const listenToMessages = (chatId, dispatch, latestSentOn = null) => {
 // ----------------------------------------------------------------------
 // 🔹 Chat creation / sending
 // ----------------------------------------------------------------------
-
-export const startChat = async (fromId, toId, text, senderUsername) => {
-  const chatId = getChatId(fromId, toId);
+export const startChat = async (fromId, toId, text, senderUsername, jobId) => {
+ const chatId = jobId
+  ? getChatId(toId, jobId)   // or fromId depending on your design
+  : getChatId(fromId, toId);
   const ref = firestore().collection('chats').doc(chatId);
 
-  // 1️⃣ Create or update chat document
-  await ref.set(
-    {
-      participants: [fromId, toId],
-      status: 'REQUESTED',
-      requestedBy: fromId,
-      acceptedBy: null,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      lastMessage: {
-        text,
-        from: fromId,
-        sentOn: FieldValue.serverTimestamp(),
-        status: 'UNREAD',
-      },
+  // 🔥 Build base chat data
+  let chatData = {
+    participants: [fromId, toId],
+    status: 'REQUESTED',
+    requestedBy: fromId,
+    acceptedBy: null,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    lastMessage: {
+      text,
+      from: fromId,
+      sentOn: FieldValue.serverTimestamp(),
+      status: 'UNREAD',
     },
-    { merge: true }
-  );
+  };
 
-  // 2️⃣ Add message to subcollection
+  // ✅ If jobId exists → modify payload
+  if (jobId) {
+    chatData = {
+      ...chatData,
+      jobId,                 // attach jobId
+      status: 'ACTIVE',      // mark chat active
+      acceptedBy: toId,      // optional: auto-accept
+    };
+  }
+
+  // 1️⃣ Create or update chat document
+  await ref.set(chatData, { merge: true });
+
+  // 2️⃣ Add message
   await ref.collection('messages').add({
     from: fromId,
     to: toId,
@@ -142,7 +153,6 @@ export const startChat = async (fromId, toId, text, senderUsername) => {
   });
 
   // 3️⃣ Notify Cloud Function
-   // 3️⃣ Send Cloud Function request
   try {
     console.log('Sending notification to Cloud Function...');
     const response = await axios.post(
@@ -156,7 +166,7 @@ export const startChat = async (fromId, toId, text, senderUsername) => {
       },
       {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 10000, // 10 seconds
+        timeout: 10000,
       }
     );
 
@@ -170,7 +180,6 @@ export const startChat = async (fromId, toId, text, senderUsername) => {
 
   return chatId;
 };
-
 export const sendMessage = async (chatId, fromId, toId, text,senderUsername) => {
   const ref = firestore().collection('chats').doc(chatId);
 

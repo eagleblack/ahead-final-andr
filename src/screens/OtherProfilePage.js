@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -11,481 +11,416 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchOtherProfile,
-  clearOtherProfile,
-} from "../store/otherProfileSlice";
+import { fetchOtherProfile, clearOtherProfile } from "../store/otherProfileSlice";
 import { ActivityIndicator, Button } from "react-native-paper";
 import Icon from "react-native-vector-icons/Ionicons";
 import Feather from "react-native-vector-icons/Feather";
+import Entypo from "react-native-vector-icons/Entypo";
 import OtherProfilePosts from "../components/OtherProfilePosts";
 import { clearPosts } from "../store/otherProfilePostSlice";
-import firestore,{FieldValue} from "@react-native-firebase/firestore";
+import firestore, { FieldValue } from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
-
+import BlockUserModal from "../components/BlockUserModal";
+import { getChatId } from "../services/chatService";
+import { removeBlockedUserPosts } from "../store/feedSlice";
+import { blockUser } from "../store/userSlice";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
 const DUMMY_PROFILE_PIC = "https://randomuser.me/api/portraits/men/75.jpg";
-import {
-  fetchInitialMessages,
-  fetchMoreMessages,
-  listenToMessages,
-  listenToChatStatus,
-  sendMessage,
-  acceptChatRequest,
-  startChat,
-  getChatId,
-  markChatAsRead,
-} from "../services/chatService";
+
 const OtherProfilePage = ({ navigation, route }) => {
   const { colors } = useTheme();
   const dispatch = useDispatch();
-  const { uid } = route.params;
-  const { profile: userData, loading } = useSelector(
-    (state) => state.otherProfile
-  );
+  const { uid,jobId } = route.params;
+  const currentUser = auth().currentUser;
+  const currentUserId = currentUser?.uid;
 
-
-  const TABS =
-    userData?.userType === "company"
-      ? ["About"]
-      : ["Posts","Certificates", "Experience", "Education"];
-
+  const { profile: userData, loading } = useSelector((state) => state.otherProfile);
   const [activeTab, setActiveTab] = useState("Posts");
   const [isFollowing, setIsFollowing] = useState(false);
-  const currentUser = auth().currentUser;
-  const currentUserId =currentUser?.uid;
-  // 🔹 Check follow status
-  useEffect(() => {
-  let unsubscribe;
-  if (uid && currentUser?.uid && uid !== currentUser.uid) {
-    const followDoc = firestore()
-      .collection("follows")
-      .doc(`${currentUser.uid}_${uid}`);
+  const [blockVisible, setBlockVisible] = useState(false);
+  const [blockStatus, setBlockStatus] = useState({ iBlocked: false, blockedMe: false, loading: true });
+const scrollRef = useRef(null);
+const tabScrollRef = useRef(null);
+const [tabLayouts, setTabLayouts] = useState({});
 
-    unsubscribe = followDoc.onSnapshot((doc) => {
-      setIsFollowing(doc.exists);
+useEffect(() => {
+  const layout = tabLayouts[activeTab];
+
+  if (layout && tabScrollRef.current) {
+    tabScrollRef.current.scrollTo({
+      x: layout.x - 40, // offset so it's not stuck to edge
+      animated: true,
     });
   }
-  return () => unsubscribe && unsubscribe();
-}, [uid, currentUser]);
-
-
-  // 🔹 Toggle follow/unfollow
-const handleFollowToggle = async () => {
-  if (!currentUser?.uid || uid === currentUser.uid) return;
-
-  const followId = `${currentUser.uid}_${uid}`;
-  const followRef = firestore().collection("follows").doc(followId);
-  const notificationsRef = firestore().collection("notifications");
-
-  try {
-    if (isFollowing) {
-      // 🔹 UNFOLLOW: Remove follow doc & notification
-      await followRef.delete();
-
-      // Find the existing FOLLOW notification and delete it
-      const notifSnap = await notificationsRef
-        .where("notificationFrom", "==", currentUser.uid)
-        .where("notificationTo", "==", uid)
-        .where("notificationType", "==", "FOLLOW")
-        .get();
-
-      const batch = firestore().batch();
-      notifSnap.forEach((doc) => batch.delete(doc.ref));
-      await batch.commit();
-
-      console.log("✅ Unfollowed and removed notification.");
-    } else {
-      // 🔹 FOLLOW: Create follow doc & notification
-      await followRef.set({
-        followerId: currentUser.uid,
-        followingId: uid,
-        followedAt: FieldValue.serverTimestamp(),
-      });
-
-      await notificationsRef.add({
-        notificationFrom: currentUser.uid,
-        notificationTo: uid,
-        notificationType: "FOLLOW",
-        notificationText: `You have a new follower.`,
-        createdOn: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-        read: false,
-        status:"UNREAD"
-      });
-
-      console.log("✅ Followed and notification added.");
-    }
-  } catch (error) {
-    console.log("❌ Error toggling follow:", error);
-  }
-};
-
+}, [activeTab]);
+  useEffect(() => {
+    const checkBlockStatus = async () => {
+      try {
+        if (!currentUserId || !uid) return;
+        const [myBlock, theirBlock] = await Promise.all([
+          firestore().collection("users").doc(currentUserId).collection("blockedUsers").doc(uid).get(),
+          firestore().collection("users").doc(uid).collection("blockedUsers").doc(currentUserId).get()
+        ]);
+        setBlockStatus({ iBlocked: myBlock.exists(), blockedMe: theirBlock.exists(), loading: false });
+      } catch (err) {
+        setBlockStatus((prev) => ({ ...prev, loading: false }));
+      }
+    };
+    checkBlockStatus();
+  }, [uid, currentUserId]);
 
   useEffect(() => {
-    if (userData?.userType === "company" && activeTab !== "Posts") {
-      setActiveTab("Posts");
+    let unsubscribe;
+    if (uid && currentUserId && uid !== currentUserId) {
+      unsubscribe = firestore().collection("follows").doc(`${currentUserId}_${uid}`)
+        .onSnapshot((doc) => setIsFollowing(doc.exists));
     }
-    dispatch(clearPosts());
-  }, [userData]);
+    return () => unsubscribe && unsubscribe();
+  }, [uid, currentUserId]);
 
   useEffect(() => {
-    if (uid) {
-      dispatch(fetchOtherProfile(uid));
-    }
-
+    if (uid) dispatch(fetchOtherProfile(uid));
     return () => {
       dispatch(clearOtherProfile());
+      dispatch(clearPosts());
     };
   }, [dispatch, uid]);
 
-  if (loading || !userData) {
+  const handleFollowToggle = async () => {
+    if (!currentUserId || uid === currentUserId) return;
+    const followId = `${currentUserId}_${uid}`;
+    const followRef = firestore().collection("follows").doc(followId);
+    try {
+      if (isFollowing) {
+        await followRef.delete();
+        const notifSnap = await firestore().collection("notifications")
+          .where("notificationFrom", "==", currentUserId)
+          .where("notificationTo", "==", uid)
+          .where("notificationType", "==", "FOLLOW").get();
+        const batch = firestore().batch();
+        notifSnap.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+      } else {
+        await followRef.set({ followerId: currentUserId, followingId: uid, followedAt: FieldValue.serverTimestamp() });
+        await firestore().collection("notifications").add({
+          notificationFrom: currentUserId,
+          notificationTo: uid,
+          notificationType: "FOLLOW",
+          notificationText: `You have a new follower.`,
+          createdOn: FieldValue.serverTimestamp(),
+          read: false,
+          status: "UNREAD"
+        });
+      }
+    } catch (error) { console.log(error); }
+  };
+
+  const handleUnblock = async () => {
+    try {
+      const batch = firestore().batch();
+      batch.delete(firestore().collection("users").doc(currentUserId).collection("blockedUsers").doc(uid));
+      batch.delete(firestore().collection("users").doc(uid).collection("blockedBy").doc(currentUserId));
+      await batch.commit();
+      setBlockStatus({ iBlocked: false, blockedMe: false, loading: false });
+    } catch (err) { console.log(err); }
+  };
+const handleSwipe = (event) => {
+  const { translationX, state } = event.nativeEvent;
+
+  if (state === State.END) {
+    const currentIndex = TABS.indexOf(activeTab);
+
+    if (translationX < -50 && currentIndex < TABS.length - 1) {
+      // Swipe Left → Next Tab
+      setActiveTab(TABS[currentIndex + 1]);
+    } else if (translationX > 50 && currentIndex > 0) {
+      // Swipe Right → Previous Tab
+      setActiveTab(TABS[currentIndex - 1]);
+    }
+  }
+};
+  if (!blockStatus.loading && blockStatus.blockedMe) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+        <Feather name="eye-off" size={50} color={colors.textSecondary} style={{ marginBottom: 16 }} />
+        <Text style={[styles.errorText, { color: colors.text }]}>Profile not found</Text>
+        <Button mode="text" onPress={() => navigation.goBack()}>Go Back</Button>
       </SafeAreaView>
     );
   }
 
-  const experiences = (userData.experiences || []).map((e) => ({
-    ...e,
-    type: "experience",
-  }));
-  const education = (userData.education || []).map((e) => ({
-    ...e,
-    type: "education",
-  }));
+  if (loading || !userData) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
-  const sortedExperiences = experiences.sort(
-    (a, b) =>
-      new Date(b.to === "Present" ? Date.now() : b.to) -
-      new Date(a.to === "Present" ? Date.now() : a.to)
-  );
-  const sortedEducation = education.sort(
-    (a, b) => new Date(b.to) - new Date(a.to)
-  );
-
+  const TABS = userData?.userType === "company" ? ["About"] : ["Posts", "Experience", "Education", "Certificates"];
+const data =
+  activeTab === "Experience"
+    ? userData.experiences
+    : activeTab === "Education"
+    ? userData.education
+    : userData.certifications;
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      edges={["bottom", "top"]}
-    >
-      {/* 🔹 Header Bar */}
-      <View style={[styles.headerBar, { borderBottomColor: colors.surface }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={26} color={colors.text} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+      {/* Premium Header */}
+      <View style={[styles.headerBar, { backgroundColor: colors.background }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <Icon name="chevron-back" size={28} color={colors.text} />
         </TouchableOpacity>
 
-        <Text allowFontScaling={false}  style={[styles.headerTitle, { color: colors.text }]}>
-          Profile
-        </Text>
-
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          {/* 🔹 Follow Button */}
-          {uid !== currentUser?.uid && (
-            <TouchableOpacity
-              onPress={handleFollowToggle}
-              style={[
-                styles.followBtn,
-                {
-                  backgroundColor: isFollowing
-                    ? colors.surface
-                    : colors.primary,
-                },
-              ]}
-            >
-              <Text allowFontScaling={false} 
-                style={{
-                  color: isFollowing ? colors.text : "#fff",
-                  fontWeight: "600",
-                }}
+        <View style={styles.headerRight}>
+          {uid !== currentUserId && !blockStatus.iBlocked && (
+            <>
+              <TouchableOpacity
+                onPress={handleFollowToggle}
+                style={[styles.followBtn, { backgroundColor: isFollowing ? colors.surface : colors.primary }]}
               >
-                {isFollowing ? "Following" : "Follow"}
-              </Text>
+                <Text style={{ color: isFollowing ? colors.text : "#fff", fontWeight: "700", fontSize: 13 }}>
+                  {isFollowing ? "Following" : "Follow"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Message", {
+                  otherUserId: uid,
+                  otherUserName: userData.name,
+                  otherUserAvatar: userData.profilePic,
+                  chatId: getChatId(currentUserId, uid),
+                  jobId:jobId
+                })}
+                style={[styles.iconBtn, { marginHorizontal: 8 }]}
+              >
+                <Feather name="message-circle" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {blockStatus.iBlocked && (
+            <TouchableOpacity onPress={handleUnblock} style={[styles.followBtn, { backgroundColor: colors.primary }]}>
+              <Text style={{ color: "#fff", fontWeight: "700" }}>Unblock</Text>
             </TouchableOpacity>
           )}
 
-          {/* 🔹 Message Button */}
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("Message", {
-                otherUserId: uid,
-                otherUserName: userData.name,
-                otherUserAvatar: userData.avatar,
-                chatId:getChatId(currentUserId, uid)
-              })
-            }
-          >
-            <Feather
-              name="message-circle"
-              size={22}
-              color={colors.text}
-              style={{ marginLeft: 12 }}
-            />
+          <TouchableOpacity onPress={() => setBlockVisible(true)} style={styles.iconBtn}>
+            <Entypo name="dots-three-vertical" color={colors.text} size={18} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={true}
-      >
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <Image
-            source={{ uri: userData?.profilePic || DUMMY_PROFILE_PIC }}
-            style={styles.profilePic}
-          />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Profile Hero */}
+        <View style={styles.heroSection}>
+          <View style={[styles.imageContainer, { borderColor: colors.primary + '33' }]}>
+            <Image source={{ uri: userData?.profilePic || DUMMY_PROFILE_PIC }} style={styles.profilePic} />
+          </View>
 
-          <Text allowFontScaling={false}  style={[styles.name, { color: colors.text }]}>
-            {userData.name}
-          </Text>
-          <Text allowFontScaling={false}  style={[styles.username, { color: colors.textSecondary }]}>
-            @{userData.username}
-          </Text>
+          <Text allowFontScaling={false} style={[styles.name, { color: colors.text }]}>{userData.name}</Text>
+          <Text allowFontScaling={false} style={[styles.username, { color: colors.primary }]}>@{userData.username}</Text>
 
-          {userData.bio && (
-            <Text allowFontScaling={false}  style={[styles.bio, { color: colors.text }]}>
-              {userData.bio}
-            </Text>
-          )}
-
-          {userData.value && (
-            <Text allowFontScaling={false}  style={[styles.dob, { color: colors.textSecondary,marginTop:10,fontSize:18,fontWeight:'800' }]}>
-               {userData.value}
-            </Text>
-          )}
-
-          {userData.linkBtn && (
-            <Button
-              mode="contained-tonal"
-              onPress={() =>
-                Linking.openURL(
-                  `https://linkedin.com/in/${userData.username || "dummy"}`
-                )
-              }
-              style={styles.linkBtn}
-              labelStyle={{ color: colors.primary }}
-              icon="logo-linkedin"
-            >
-              <Text allowFontScaling={false} >View LinkedIn</Text>
-            </Button>
+          {!blockStatus.iBlocked && (
+            <>
+              {userData.bio && <Text style={[styles.bio, { color: colors.textSecondary }]}>{userData.bio}</Text>}
+              
+                 {userData.value ? (
+                       <View style={[styles.rankBadge, { backgroundColor: colors.primary, shadowColor: colors.accent }]}>
+                         <Text allowFontScaling={false} style={[styles.rankTxt,{color: colors.background}]}>{userData.value}</Text>
+                       </View>
+                     ) : null}
+  
+              {userData.linkBtn && (
+                <Button
+                  mode="contained-tonal"
+                  onPress={() => Linking.openURL(`https://linkedin.com/in/${userData.username}`)}
+                  style={styles.linkBtn}
+                  icon="logo-linkedin"
+                >
+                  View Professional Profile
+                </Button>
+              )}
+            </>
           )}
         </View>
 
-        {userData?.userType == "company" ? (
-          ""
-        ) : (
-          <View style={styles.tabs}>
-            {TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.tab,
-                  activeTab === tab && {
-                    borderBottomColor: colors.primary,
-                  },
-                ]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text allowFontScaling={false} 
+        {/* Tabs & Content */}
+        {!blockStatus.iBlocked && (
+          <>
+            <View style={[styles.tabsContainer, { backgroundColor: colors.surface + '40' }]}>
+                   <ScrollView
+               horizontal
+               showsHorizontalScrollIndicator={false}
+               ref={tabScrollRef}
+             >  
+                {TABS.map((tab) => (
+                       <TouchableOpacity
+                   key={tab}
+                   onLayout={(e) => {
+                     const { x, width } = e.nativeEvent.layout;
+                     setTabLayouts((prev) => ({
+                       ...prev,
+                       [tab]: { x, width },
+                     }));
+                   }}
+                   style={[
+                     styles.tab,
+                     activeTab === tab && { borderBottomColor: colors.primary },
+                   ]}
+                   onPress={() => setActiveTab(tab)}
+                 >
+                    <Text style={[styles.tabText, { color: activeTab === tab ? colors.primary : colors.textSecondary }]}>
+                      {tab}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+<PanGestureHandler onHandlerStateChange={handleSwipe}  activeOffsetX={[-20, 20]} // only trigger when clear horizontal swipe
+  failOffsetY={[-10, 10]}     // fail if vertical movement happens
+>
+  <View style={styles.content}>
+    {activeTab === "Posts" && (
+      <OtherProfilePosts navigation={navigation} otherUserId={uid} />
+    )}
+
+    {["Experience", "Education", "Certificates"].includes(activeTab) && (
+      <View style={styles.timelineContainer}>
+        {data && data.length > 0 ? (
+          data.map((item, idx) => (
+            <View key={idx} style={styles.timelineItem}>
+              <View style={styles.timelineLeft}>
+                <View
                   style={[
-                    styles.tabText,
-                    {
-                      color:
-                        activeTab === tab ? colors.primary : colors.text,
-                    },
+                    styles.timelineDot,
+                    { backgroundColor: colors.primary },
                   ]}
-                >
-                  {tab}
+                />
+                <View
+                  style={[
+                    styles.timelineLine,
+                    { backgroundColor: colors.surface },
+                  ]}
+                />
+              </View>
+
+              <View
+                style={[
+                  styles.timelineCard,
+                  { backgroundColor: colors.surface },
+                ]}
+              >
+                <Text style={[styles.cardTitle, { color: colors.text }]}>
+                  {item.title || item.degree || item.courseName}
                 </Text>
-              </TouchableOpacity>
-            ))}
+                <Text style={[styles.cardOrg, { color: colors.primary }]}>
+                  {item.org || item.institution || item.issuePlace}
+                </Text>
+                <Text
+                  style={[styles.cardDate, { color: colors.textSecondary }]}
+                >
+                  {item.from
+                    ? `${item.from} — ${item.to}`
+                    : item.issueDate}
+                </Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          // 👇 EMPTY STATE
+          <View style={styles.emptyContainer}>
+            <Feather
+              name="inbox"
+              size={40}
+              color={colors.textSecondary}
+              style={{ marginBottom: 10 }}
+            />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No {activeTab} added yet
+            </Text>
           </View>
         )}
-
-        <View style={styles.content}>
-          {activeTab === "Posts" && (
-            <OtherProfilePosts navigation={navigation} otherUserId={uid} />
-          )}
-
-          {activeTab === "Experience" &&
-            sortedExperiences.map((exp, idx) => (
-              <View key={idx} style={styles.timelineItem}>
-                <View style={styles.timelineDot} />
-                <View
-                  style={[
-                    styles.timelineCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <Text allowFontScaling={false}  style={[styles.cardTitle, { color: colors.text }]}>
-                    {exp.title}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardOrg, { color: colors.textSecondary }]}
-                  >
-                    {exp.org}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardDate, { color: colors.textSecondary }]}
-                  >
-                    {exp.from} – {exp.to}
-                  </Text>
-                  <Text allowFontScaling={false}  style={[styles.cardDesc, { color: colors.text }]}>
-                    {exp.desc}
-                  </Text>
-                </View>
-              </View>
-            ))}
- {activeTab === "Certificates" &&
-  userData?.certifications?.length > 0 &&
-  userData.certifications.map((cert, idx) => (
-    <View key={idx} style={styles.timelineItem}>
-      <View style={styles.timelineDot} />
-
-      <View
-        style={[
-          styles.timelineCard,
-          { backgroundColor: colors.surface },
-        ]}
-      >
-        <Text
-          allowFontScaling={false}
-          style={[styles.cardTitle, { color: colors.text }]}
-        >
-          {cert.courseName}
-        </Text>
-
-        <Text
-          allowFontScaling={false}
-          style={[styles.cardOrg, { color: colors.textSecondary }]}
-        >
-          {cert.issuePlace}
-        </Text>
-
-        <Text
-          allowFontScaling={false}
-          style={[styles.cardDate, { color: colors.textSecondary }]}
-        >
-          Issued: {cert.issueDate}
-        </Text>
-
-        {cert.certificateNumber ? (
-          <Text
-            allowFontScaling={false}
-            style={[styles.cardMeta, { color: colors.textSecondary }]}
-          >
-            Certificate No: {cert.certificateNumber}
-          </Text>
-        ) : null}
       </View>
-    </View>
-  ))}
-          {activeTab === "Education" &&
-            sortedEducation.map((edu, idx) => (
-              <View key={idx} style={styles.timelineItem}>
-                <View style={styles.timelineDot} />
-                <View
-                  style={[
-                    styles.timelineCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <Text allowFontScaling={false}  style={[styles.cardTitle, { color: colors.text }]}>
-                    {edu.degree}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardOrg, { color: colors.textSecondary }]}
-                  >
-                    {edu.institution}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardDate, { color: colors.textSecondary }]}
-                  >
-                    {edu.from} – {edu.to}
-                  </Text>
-                </View>
-              </View>
-            ))}
-        </View>
+    )}
+  </View>
+</PanGestureHandler>
+
+          </>
+        )}
       </ScrollView>
+
+      <BlockUserModal
+        visible={blockVisible}
+        onClose={() => setBlockVisible(false)}
+        onConfirm={() => {
+          dispatch(removeBlockedUserPosts(uid));
+          dispatch(blockUser({ blockedUserId: uid }));
+          setBlockStatus({ iBlocked: true, blockedMe: false, loading: false });
+        }}
+      />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 40 },
-  headerBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 0.8,
-  },
-  headerTitle: { fontSize: 20, fontWeight: "700" },
-  followBtn: {
-    paddingHorizontal: 12,
+  headerBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, height: 60 },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  iconBtn: { padding: 6 },
+  followBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, justifyContent: 'center' },
+  heroSection: { alignItems: "center", paddingHorizontal: 24, paddingTop: 10 },
+  imageContainer: { padding: 4, borderWidth: 2, borderRadius: 70, marginBottom: 16 },
+  profilePic: { width: 110, height: 110, borderRadius: 55 },
+  name: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
+  username: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+  bio: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 20, paddingHorizontal: 20 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20, width: '100%' },
+  statItem: { alignItems: 'center', paddingHorizontal: 20 },
+  statNumber: { fontSize: 18, fontWeight: '700' },
+  statLabel: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  statDivider: { width: 1, height: 25 },
+  linkBtn: { borderRadius: 12, width: '100%', marginBottom: 10 },
+  tabsContainer: { marginTop: 10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
+  tab: { paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  tabText: { fontSize: 15, fontWeight: "700" },
+  content: { padding: 16 },
+  timelineContainer: { paddingLeft: 4 },
+  timelineItem: { flexDirection: "row" },
+  timelineLeft: { alignItems: 'center', marginRight: 16 },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, zIndex: 2 },
+  timelineLine: { width: 2, flex: 1, backgroundColor: '#eee' },
+  timelineCard: { flex: 1, padding: 16, borderRadius: 16, marginBottom: 20, elevation: 1 },
+  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 2 },
+  cardOrg: { fontSize: 13, fontWeight: "600", marginBottom: 2 },
+  cardDate: { fontSize: 12, opacity: 0.7 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  errorText: { fontSize: 18, fontWeight: "700", marginTop: 8 },
+    dob: { fontSize: 13, marginBottom: 8 },
+     rankBadge: {
+  
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  header: {
-    alignItems: "center",
-    padding: 20,
-    borderRadius: 16,
-    margin: 12,
-    elevation: 2,
+  rankTxt: {
+    fontSize: 13,
+    fontWeight: "600",
+  
+    letterSpacing: 1,
   },
-  profilePic: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 12,
-  },
-  name: { fontSize: 22, fontWeight: "700" },
-  username: { fontSize: 15, marginBottom: 6 },
-  bio: {
-    fontSize: 14,
-    fontStyle: "italic",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  dob: { fontSize: 13, marginBottom: 8 },
-  linkBtn: { borderRadius: 30, marginTop: 10 },
-  tabs: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 14,
-  },
-  tab: {
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-  },
-  tabText: { fontSize: 16, fontWeight: "600" },
-  content: { paddingHorizontal: 12 },
-  timelineItem: { flexDirection: "row", marginBottom: 20 },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#0077b5",
-    marginRight: 12,
-    marginTop: 8,
-  },
-  timelineCard: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 14,
-    elevation: 2,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 2 },
-  cardOrg: { fontSize: 14, fontWeight: "500", marginBottom: 2 },
-  cardDate: { fontSize: 13, marginBottom: 6 },
-  cardDesc: { fontSize: 14, lineHeight: 20 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyContainer: {
+  alignItems: "center",
+  justifyContent: "center",
+  paddingVertical: 40,
+},
+emptyText: {
+  fontSize: 14,
+  fontWeight: "500",
+},
 });
 
-export default OtherProfilePage;
+export default OtherProfilePage; 

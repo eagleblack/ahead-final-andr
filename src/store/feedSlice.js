@@ -9,10 +9,32 @@ const docExists = (doc) =>
   typeof doc.exists === "function" ? doc.exists() : !!doc.exists;
 
 const togglingPosts = new Set();
-
+ 
 const enrichPosts = async (posts, currentUserId) => {
   if (!posts.length) return [];
+    const reportsSnap = await firestore()
+    .collectionGroup("reports")
+    .where("userId", "==", currentUserId)
+    .orderBy("createdAt", "desc")
+    .get();
+console.log("REPORT DOCS:", reportsSnap.docs.length);
 
+reportsSnap.docs.forEach((doc) => {
+  console.log("Report Path:", doc.ref.path);
+  console.log("Post ID:", doc.ref.parent.parent?.id);
+});
+  const reportedPostIds = new Set(
+    reportsSnap.docs
+      .map((doc) => doc.ref.parent.parent?.id)
+      .filter(Boolean)
+  );
+
+  // ✅ STEP 2: filter safely.  
+  const filteredPosts = posts.filter(
+    (post) => !reportedPostIds.has(post.id)
+  );
+
+  if (!filteredPosts.length) return [];
   const userIds = [...new Set(posts.map((p) => p.userId).filter(Boolean))];
 
   const userMap = {};
@@ -41,27 +63,176 @@ const enrichPosts = async (posts, currentUserId) => {
   const bookmarkedPostIds = bookmarksSnapshot.docs.map(
     (d) => d.ref.parent.parent.id
   );
+const votesSnapshot = await firestore()
+  .collectionGroup("votes")
+  .where("userId", "==", currentUserId)
+   .orderBy("createdAt", "desc")
+  .get();
 
-  return posts.map((post) => {
-    const userData = userMap[post.userId] || {};
-    return {
-      ...post,
-      likedByCurrentUser: likedPostIds.includes(post.id),
-      bookmarkedByCurrentUser: bookmarkedPostIds.includes(post.id),
-      totalLikes: post.totalLikes || 0,
-      user: {
-        uid: userData.uid || post.userId,
-        name: userData.name || "Anonymous",
-        avatar: userData.profilePic || "https://i.pravatar.cc/150",
-        tagline: userData.profileTitle || "A new user",
-      },
-    };
-  });
+const voteMap = {};
+votesSnapshot.docs.forEach((doc) => {
+  const postId = doc.ref.parent.parent.id;
+  voteMap[postId] = doc.data().optionIndex;
+});
+  return filteredPosts.map((post) => {
+  const userData = userMap[post.userId] || {};
+
+  const votedOption = voteMap[post.id]; // 👈 get voted option
+
+  return {
+    ...post,
+    likedByCurrentUser: likedPostIds.includes(post.id),
+    bookmarkedByCurrentUser: bookmarkedPostIds.includes(post.id),
+    totalLikes: post.totalLikes || 0,
+    totalViews: post.totalViews || 0,
+
+    // ✅ FIXED
+    isVoted: votedOption !== undefined,
+    votedOption: votedOption ?? null,
+
+    user: {
+      uid: userData.uid || post.userId,
+      name: userData.name || "Anonymous",
+      avatar: userData.profilePic || "https://i.pravatar.cc/150",
+      tagline: userData.profileTitle || "A new user",
+    },
+  };
+});  
 };
+export const markPostSeen = createAsyncThunk(
+  "feed/markPostSeen",
+  async (postId, { getState }) => {
+    try {
+      const user = getState().user.user;
+      if (!user?.uid || !postId) return;
+
+      const postRef = firestore().collection("posts").doc(postId);
+      const viewRef = postRef.collection("views").doc(user.uid);
+
+      await firestore().runTransaction(async (transaction) => {
+        const viewDoc = await transaction.get(viewRef);
+
+        if (!viewDoc.exists()) {
+          transaction.set(viewRef, {
+            seenAt: firestore.FieldValue.serverTimestamp(),
+          });
+
+          transaction.update(postRef, {
+            totalViews: firestore.FieldValue.increment(1),
+          });
+        }
+      });
+    } catch (err) {
+      console.log("markPostSeen error:", err);
+    }
+  }
+);
 
 //
 // 🔹 Fetch Trending (postIndex desc)
 //
+export const reportPost = createAsyncThunk(
+  "feed/reportPost",
+  async ({ postId, reason }, { rejectWithValue }) => {
+    try {
+      const user = auth().currentUser;
+      if (!user) throw new Error("User not authenticated");
+
+      const postRef = firestore().collection("posts").doc(postId);
+      const reportRef = postRef.collection("reports").doc(user.uid);
+
+      const reportDoc = await reportRef.get();
+
+      // ❌ already reported
+      if (docExists(reportDoc)) {
+        return { postId, alreadyReported: true };
+      }
+
+      // ✅ save report
+      await reportRef.set({
+        userId: user.uid,
+        reason,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      // 🔥 optional: increment report count
+      await postRef.update({
+        reportCount: FieldValue.increment(1),
+      });
+
+      return { postId };
+    } catch (err) {
+      console.error("reportPost error:", err);
+      return rejectWithValue(err.message || "Failed to report post");
+    }
+  }
+);
+export const votePoll = createAsyncThunk(
+  "feed/votePoll",
+  async ({ postId, optionIndex }, { rejectWithValue }) => {
+    try {
+      console.error(postId,optionIndex)
+      const user = auth().currentUser;
+      if (!user) throw new Error("Not authenticated");
+
+      const db = firestore();
+      const postRef = db.collection("posts").doc(postId);
+      const voteRef = postRef.collection("votes").doc(user.uid);
+await db.runTransaction(async (transaction) => {
+  const postDoc = await transaction.get(postRef);
+  const voteDoc = await transaction.get(voteRef);
+
+  const postData = postDoc.data();
+  if (!postData?.poll?.options) {
+    throw new Error("Poll data missing");
+  }
+
+  let options = [...postData.poll.options];
+  let totalVotes = postData.poll.totalVotes || 0;
+
+  if (voteDoc.exists()) {
+    const prevIndex = voteDoc.data()?.optionIndex;
+
+    if (prevIndex === optionIndex) return;
+
+    // 🔄 revote
+    if (typeof prevIndex === "number") {
+      options[prevIndex].votes -= 1;
+    }
+
+    options[optionIndex].votes += 1;
+
+    transaction.update(voteRef, {
+      optionIndex,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+  } else {
+    // 🆕 first vote
+    options[optionIndex].votes += 1;
+    totalVotes += 1;
+
+    transaction.set(voteRef, {
+      userId: user.uid,
+      optionIndex,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ✅ SAFE update (whole array)
+  transaction.update(postRef, { 
+    "poll.options": options,
+    "poll.totalVotes": totalVotes,
+  });
+});
+
+      return { postId, optionIndex };
+    } catch (e) {
+      console.error(e)
+      return rejectWithValue(e.message);
+    }
+  }
+);
 export const fetchTrendingPosts = createAsyncThunk(
   "feed/fetchTrendingPosts",
   async ({ loadMore = false } = {}, { getState, rejectWithValue }) => {
@@ -324,12 +495,79 @@ const feedSlice = createSlice({
         post.bookmarkedByCurrentUser = !post.bookmarkedByCurrentUser;
       }
     },
+    
+votePollOptimistic: (state, action) => {
+  const { postId, optionIndex } = action.payload;
+
+  const updatePost = (post) => {
+    if (!post || !post.poll) return post;
+
+    const prev = post.votedOption;
+
+    let newOptions = post.poll.options.map((opt, i) => {
+      if (prev == null) {
+        return i === optionIndex ? { ...opt, votes: opt.votes + 1 } : opt;
+      } else if (prev !== optionIndex) {
+        if (i === prev) return { ...opt, votes: opt.votes - 1 };
+        if (i === optionIndex) return { ...opt, votes: opt.votes + 1 };
+      }
+      return opt;
+    });
+
+    let newTotal = post.poll.totalVotes;
+    if (prev == null) newTotal += 1;
+
+    return {
+      ...post,
+      votedOption: optionIndex,
+      isVoted: true,
+      poll: {
+        ...post.poll,
+        options: newOptions,
+        totalVotes: newTotal,
+      },
+    };
+  };
+
+  // ✅ update BOTH feeds centrally
+  state.recent.posts = state.recent.posts.map((p) =>
+    p.id === postId ? updatePost(p) : p
+  );
+
+  state.trending.posts = state.trending.posts.map((p) =>
+    p.id === postId ? updatePost(p) : p
+  );
+},
+   removePostOptimistic: (state, action) => {
+    const postId = action.payload;
+
+    // 🔥 remove from BOTH feeds
+    state.recent.posts = state.recent.posts.filter(
+      (p) => p.id !== postId
+    );
+
+    state.trending.posts = state.trending.posts.filter(
+      (p) => p.id !== postId
+    );
+  },
+  removeBlockedUserPosts: (state, action) => {
+  const blockedUserId = action.payload;
+
+  state.recent.posts = state.recent.posts.filter(
+    (p) => p.userId !== blockedUserId
+  );
+
+  state.trending.posts = state.trending.posts.filter(
+    (p) => p.userId !== blockedUserId
+  );
+},
   },
   extraReducers: (builder) => {
     // 🔹 Trending
     builder
       .addCase(fetchTrendingPosts.pending, (state) => {
         state.trending.isFetching = true;
+        state.trending.error = null; // ✅ reset error
       })
       .addCase(fetchTrendingPosts.fulfilled, (state, action) => {
         const { posts, lastCursor, isLastPage } = action.payload;
@@ -353,6 +591,7 @@ const feedSlice = createSlice({
     builder
       .addCase(fetchRecentPosts.pending, (state) => {
         state.recent.isFetching = true;
+        state.recent.error = null; // ✅ reset error
       })
       .addCase(fetchRecentPosts.fulfilled, (state, action) => {
         const { posts, lastCursor, isLastPage } = action.payload;
@@ -374,7 +613,7 @@ const feedSlice = createSlice({
   },
 });
 
-export const { toggleLikeOptimistic, toggleBookmarkOptimistic } =
+export const { toggleLikeOptimistic, toggleBookmarkOptimistic,votePollOptimistic,removeBlockedUserPosts,removePostOptimistic } =
   feedSlice.actions;
 
 export default feedSlice.reducer;

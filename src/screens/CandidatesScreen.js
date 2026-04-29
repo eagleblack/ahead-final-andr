@@ -83,7 +83,7 @@ const CandidatesScreen = ( ) => {
       <TouchableOpacity
         style={[styles.userCard, { borderBottomColor: colors.surface }]}
         onPress={() =>
-          navigation.navigate("OtherProfile", { uid: item?.swiperId })
+          navigation.navigate("OtherProfile", { uid: item?.swiperId,jobId:jobId })
         }
       >
         <Image

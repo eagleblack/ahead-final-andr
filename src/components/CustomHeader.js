@@ -9,6 +9,9 @@ import {
   StatusBar,
 } from "react-native";
 import Feather from "react-native-vector-icons/Feather";
+import Icon from "react-native-vector-icons/Ionicons";
+import ExpertScreen from "../screens/ExpertScreen";
+
 import LinearGradient from "react-native-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { useSelector } from "react-redux";
@@ -59,50 +62,32 @@ const CustomHeader = () => {
 
         {/* LEFT */}
         <View style={styles.left}>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("MainApp", { screen: "Profile" })
-            }
-          >
-            <Image
-              source={
-                user?.profilePic
-                  ? { uri: user.profilePic }
-                  : require("../assets/logomain.jpg")
-              }
-              style={[
-                styles.avatar,
-                { borderColor: colors.surface },
-              ]}
-            />
-          </TouchableOpacity>
+        
 
           <Text
             allowFontScaling={false}
             style={[styles.title, { color: colors.text }]}
           >
-            Ahead AI
+          Posts
           </Text>
         </View>
 
         {/* RIGHT */}
-        <TouchableOpacity
+        <View style={{flexDirection:'row'}}>
+<TouchableOpacity
           style={[
             styles.bellContainer,
-            { backgroundColor:'white' },
+            { backgroundColor:'white',marginRight:10 },
           ]}
-          onPress={() => navigation.navigate("Notifications")}
+          onPress={() => navigation.navigate("AddPost")}
         >
-          <Feather name="bell" size={20} color={colors.primary} />
+          <Icon name="add" size={20} color={colors.primary} />
 
-          {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Text>
-            </View>
-          )}
+        
         </TouchableOpacity>
+ 
+        </View>
+       
       </LinearGradient>
     </View>
   );

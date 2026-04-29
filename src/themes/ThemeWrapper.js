@@ -16,32 +16,33 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/MaterialIcons";
 import { useTheme } from "../context/ThemeContext";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchJobs, swipeJob, resetJobs } from "../store/JobSlice";
+import { fetchJobs, swipeJob, resetJobs, viewJob } from "../store/JobSlice";
 import {
   listenToSelectionOptions,
   clearSelectionListener,
 } from "../store/selectionSlice";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import JobCard from "../components/JobCard";
 import RadarScreen from "../components/RadarComponent";
+import IconF from "react-native-vector-icons/Feather";
+
+import CardStack from "../components/job/CardStack";
 
 
-
-
-const JobSwiper = () => {
+const JobSwiper = () => {  
   const { colors: theme, theme: currentTheme, themes } = useTheme();
   const dispatch = useDispatch();
   const swiperRef = useRef(null);
 const lastSwipeDir = useRef(null);
 
-  const { jobs, loading } = useSelector((state) => state.jobs);
+const { jobs, loading, hasMore } = useSelector((state) => state.jobs);
   const { user: userData } = useSelector((state) => state.user);
   const { jobOptions, studentOptions, filters, error: filterError,experts } = useSelector(
     (state) => state.selection
   );
   
   const filtersArray=["All",...filters]
-
+ const navigation=useNavigation()
   const [finished, setFinished] = useState(false);
   const [activeTheme, setActiveTheme] = useState(currentTheme);
   const swipeResetTimeout = useRef(null);
@@ -65,16 +66,19 @@ const lastSwipeDir = useRef(null);
 
   // 🔹 Load jobs and selection options
   useEffect(() => {
-    dispatch(resetJobs());
+    //dispatch(resetJobs());
     dispatch(fetchJobs());
-   
   }, [dispatch]);
 
   // 🔹 Track theme changes
   useEffect(() => {
     setActiveTheme(currentTheme);
   }, [currentTheme]);
+ useEffect(() => {
+    setActiveTheme(currentTheme);
+    
 
+  }, [jobs]);
   // 🌊 Start waves
 
 
@@ -87,59 +91,11 @@ const lastSwipeDir = useRef(null);
   };
 
   const handleSwipedAll = () => {
-    console.log("✅ All jobs swiped!");
+   
     setFinished(true);
-  };
+  };  
 
-  // ✨ Handle swiping for LIKE/NOPE opacity
-  const handleSwiping = (x) => {
-     if (x > 20) lastSwipeDir.current = "right";
-  else if (x < -20) lastSwipeDir.current = "left";
-  else lastSwipeDir.current = null;
-    if (swipeResetTimeout.current) clearTimeout(swipeResetTimeout.current);
 
-    if (x > 0) {
-      Animated.timing(likeOpacity, {
-        toValue: Math.min(x / 120, 1),
-        duration: 50,
-        useNativeDriver: true,
-      }).start();
-      nopeOpacity.setValue(0);
-    } else if (x < 0) {
-      Animated.timing(nopeOpacity, {
-        toValue: Math.min(Math.abs(x) / 120, 1),
-        duration: 50,
-        useNativeDriver: true,
-      }).start();
-      likeOpacity.setValue(0);
-    } else {
-      likeOpacity.setValue(0);
-      nopeOpacity.setValue(0);
-    }
-
-    swipeResetTimeout.current = setTimeout(() => {
-      resetLikeNopeOpacity();
-    }, 300);
-  };
-
-  const resetLikeNopeOpacity = () => {
-    Animated.timing(likeOpacity, {
-      toValue: 0,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
-    Animated.timing(nopeOpacity, {
-      toValue: 0,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  useEffect(() => {
-    return () => {
-      if (swipeResetTimeout.current) clearTimeout(swipeResetTimeout.current);
-    };
-  }, []);
 
   // 🧠 Filtered job list
 const filteredJobs =
@@ -160,9 +116,29 @@ const filteredJobs =
   }
 
   // 🎯 No jobs
-  if (filteredJobs.length === 0 || finished) {
+if (filteredJobs.length === 0 && !loading) {
     return (
           <View style={{flex:1}}>
+              <TouchableOpacity
+  style={[
+    styles.trackButton,
+    {
+      backgroundColor: theme.card,
+      borderColor: theme.primary,
+      shadowColor: theme.primary,
+    },
+  ]}
+  activeOpacity={0.85}
+  onPress={() => navigation.navigate("Applied")}
+>
+  <IconF name="briefcase" size={18} color={theme.primary} />
+  <Text
+    allowFontScaling={false}
+    style={[styles.trackButtonText, { color: theme.primary }]}
+  >
+    Track Jobs
+  </Text>
+</TouchableOpacity>
               <TouchableOpacity
         style={styles.filterIcon}
         onPress={() => setFilterModalVisible(true)}
@@ -232,6 +208,26 @@ const filteredJobs =
   return (
     <View style={[styles.container, { backgroundColor: activeColors.background }]}>
       {/* 🧭 Filter Icon */}
+            <TouchableOpacity
+  style={[
+    styles.trackButton,
+    {
+      backgroundColor: theme.card,
+      borderColor: theme.primary,
+     
+    },
+  ]}
+  activeOpacity={0.85}
+  onPress={() => navigation.navigate("Applied")}
+>
+  <IconF name="briefcase" size={18} color={theme.primary} />
+  <Text
+    allowFontScaling={false}
+    style={[styles.trackButtonText, { color: theme.primary }]}
+  >
+    Track Jobs
+  </Text>
+</TouchableOpacity>
       <TouchableOpacity
         style={styles.filterIcon}
         onPress={() => setFilterModalVisible(true)}
@@ -253,30 +249,30 @@ const filteredJobs =
       <Animated.Text
         style={[
           styles.swipeText,
-          styles.nopeText,
+          styles.nopeText, 
           { opacity: nopeOpacity, transform: [{ rotate: "20deg" }] },
         ]}
       >
         NOPE
-      </Animated.Text>
+      </Animated.Text> 
 
-      <SafeAreaView style={styles.swiperWrapper}>
-           <Swiper
-             ref={swiperRef}
-             cards={filteredJobs}
-             renderCard={(job) => <JobCard job={job} />}
-             onSwipedRight={(i) => handleSwipe(i, "right")}
-             onSwipedLeft={(i) => handleSwipe(i, "left")}
-             onSwipedAll={handleSwipedAll}
-             onSwiping={(x) => handleSwiping(x)}
-             cardIndex={0}
-             backgroundColor="transparent"
-             stackSize={1}
-             animateCardOpacity
-             disableTopSwipe
-             disableBottomSwipe
-           />
-         </SafeAreaView>
+     <SafeAreaView style={{ flex: 1,marginTop:20 }}>
+  <CardStack
+    data={filteredJobs}
+    style={{ flex: 1 }}   // 👈 important
+  onSwipe={(job, direction) => {
+    dispatch(swipeJob({ job, direction }));
+  }}
+    onSwipedAll={handleSwipedAll}
+     hasMore={hasMore} // 👈 add this
+   onEndReached={() => {
+  if (!loading) {
+    dispatch(fetchJobs());
+  }
+}}
+viewJob={(jobId) => dispatch(viewJob(jobId))}
+  />
+</SafeAreaView>
       {/* 🧩 Filter Modal */}
       <Modal
         visible={filterModalVisible}
@@ -353,6 +349,7 @@ const styles = StyleSheet.create({
   likeText: { left: 20, color: "#4CAF50", borderColor: "#4CAF50" },
   nopeText: { right: 20, color: "#F44336", borderColor: "#F44336" },
   filterIcon: { position: "absolute", top: 10, right: 20, zIndex: 1000 },
+  filterIconJob:{position: "absolute", top: 10, right: 60, zIndex: 1000},
   modalContainer: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,1)",
@@ -379,6 +376,31 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: "center",
   },
+  trackButton: {
+  position: "absolute",
+  top: 10,
+  right: 60,
+  zIndex: 1000,
+
+  flexDirection: "row",
+  alignItems: "center",
+
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+
+  borderRadius: 999, // pill shape
+  borderWidth: 1.2,
+
+  // subtle elevation
+ 
+ 
+},
+
+trackButtonText: {
+  marginLeft: 6,
+  fontSize: 13,
+  fontWeight: "600",
+},
 });
 
 export default JobSwiper;

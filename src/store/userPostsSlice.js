@@ -8,6 +8,67 @@ let unsubscribeUserPosts = null;
 /**
  * 🔄 Start listening to user's posts (with snapshot)
  */
+
+const enrichPosts = async (posts, currentUserId) => {
+  if (!posts.length) return [];
+ 
+  const userIds = [...new Set(posts.map((p) => p.userId).filter(Boolean))];
+
+  const userMap = {};
+  if (userIds.length) {
+    const userDocs = await firestore()
+      .collection("users")
+      .where("uid", "in", userIds)
+      .get();
+    userDocs.forEach((doc) => {
+      userMap[doc.id] = doc.data();
+    });
+  }
+
+  const likesSnapshot = await firestore()
+    .collectionGroup("likes")
+    .where("userId", "==", currentUserId)
+    .orderBy("createdAt", "desc")
+    .get();
+  const likedPostIds = likesSnapshot.docs.map((d) => d.ref.parent.parent.id);
+
+
+const votesSnapshot = await firestore()
+  .collectionGroup("votes")
+  .where("userId", "==", currentUserId)
+   .orderBy("createdAt", "desc")
+  .get();
+
+const voteMap = {};
+votesSnapshot.docs.forEach((doc) => {
+  const postId = doc.ref.parent.parent.id;
+  voteMap[postId] = doc.data().optionIndex;
+});
+  return posts.map((post) => {
+  const userData = userMap[post.userId] || {};
+
+  const votedOption = voteMap[post.id]; // 👈 get voted option
+
+  return {
+    ...post,
+    likedByCurrentUser: likedPostIds.includes(post.id),
+    bookmarkedByCurrentUser:false,
+    totalLikes: post.totalLikes || 0,
+    totalViews: post.totalViews || 0,
+
+    // ✅ FIXED
+    isVoted: votedOption !== undefined,
+    votedOption: votedOption ?? null,
+
+    user: {
+      uid: userData.uid || post.userId,
+      name: userData.name || "Anonymous",
+      avatar: userData.profilePic || "https://i.pravatar.cc/150",
+      tagline: userData.profileTitle || "A new user",
+    },
+  };
+});  
+};
 export const listenToUserPosts = createAsyncThunk(
   "userPosts/listenToUserPosts",
   async (_, { dispatch, rejectWithValue }) => {
@@ -15,7 +76,7 @@ export const listenToUserPosts = createAsyncThunk(
       const user = auth().currentUser;
       if (!user) throw new Error("User not authenticated");
 
-      // detach old listener
+      // 🔁 detach old listener
       if (unsubscribeUserPosts) unsubscribeUserPosts();
 
       unsubscribeUserPosts = firestore()
@@ -24,52 +85,36 @@ export const listenToUserPosts = createAsyncThunk(
         .orderBy("createdAt", "desc")
         .limit(20)
         .onSnapshot(
-          async (snapshot) => {
-            const posts = await Promise.all(
-              snapshot.docs.map(async (doc) => {
-                const data = doc.data();
+  async (snapshot) => {
+    try {
+      if (snapshot.empty) {
+        dispatch(setUserPosts([]));
+        return;
+      }
 
-                // check like status
-                let likedByCurrentUser = false;
-                try {
-                  const likeDoc = await firestore()
-                    .collection("posts")
-                    .doc(doc.id)
-                    .collection("likes")
-                    .doc(user.uid)
-                    .get();
+      const posts = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-                  likedByCurrentUser =
-                    typeof likeDoc.exists === "function"
-                      ? likeDoc.exists()
-                      : likeDoc.exists;
-                } catch (err) {
-                  console.warn("Like check failed:", doc.id, err);
-                }
+      // 👇 move heavy work outside
 
-                return {
-                  id: doc.id,
-                  ...data,
-                  totalLikes: data.totalLikes || 0,
-                  likedByCurrentUser,
-                  userName: data.userName || "Anonymous",
-                  userAvatar: data.userAvatar || "https://i.pravatar.cc/150",
-                  userTagline: data.userTagline || "",
-                };
-              })
-            );
+     const enriched =  await enrichPosts(posts, user.uid);
+    //console.error(enriched)
+    dispatch(setUserPosts(enriched)); // ✅ FIX
 
-            dispatch(setUserPosts(posts));
-          },
-          (err) => {
-            console.error("Error in userPosts snapshot:", err);
-            dispatch(setUserPostsError(err.message));
-          }
+    } catch (err) {
+      console.error("Snapshot error:", err);
+      dispatch(setUserPostsError(err.message));
+    }
+  },
         );
 
       return true;
     } catch (err) {
-      return rejectWithValue(err.message || "Failed to listen to user posts");
+      return rejectWithValue(
+        err.message || "Failed to listen to user posts"
+      );
     }
   }
 );
@@ -144,6 +189,32 @@ const userPostsSlice = createSlice({
         }
       }
     },
+     votePollOptimisticProfile: (state, action) => {
+  const { postId, optionIndex } = action.payload;
+
+  const post = state.posts.find((p) => p.id === postId);
+  if (!post || !post.poll?.options) return;
+
+  const prev = post.votedOption;
+
+  // 🆕 First vote
+  if (prev === null || prev === undefined) {
+    post.poll.options[optionIndex].votes += 1;
+    post.poll.totalVotes += 1;
+  }
+
+  // 🔄 Revote
+  else if (prev !== optionIndex) {
+    if (typeof prev === "number" && post.poll.options[prev]) {
+      post.poll.options[prev].votes -= 1;
+    }
+    post.poll.options[optionIndex].votes += 1;
+  }
+
+  // ✅ update local state
+  post.votedOption = optionIndex;
+  post.isVoted = true;
+},
   },
   extraReducers: (builder) => {
     builder
@@ -168,7 +239,7 @@ const userPostsSlice = createSlice({
 export const {
   setUserPosts,
   setUserPostsError,
-  toggleUserPostOptimistic,
+  toggleUserPostOptimistic,votePollOptimisticProfile
 } = userPostsSlice.actions;
 
 export default userPostsSlice.reducer;

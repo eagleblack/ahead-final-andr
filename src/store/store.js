@@ -21,6 +21,10 @@ import companyReducer from "./companySlice"; // 👈 import feed slice
 import followerReducer from "./followersSlice"; // 👈 import feed slice
 import appliedJobsReducer from "./appliedJobSlice"; // 👈 import feed slice
 import selectionReducer from "./selectionSlice"; // 👈 import feed slice
+import firestore ,{FieldValue,FieldPath}from "@react-native-firebase/firestore";
+
+
+    
 
 
 
@@ -29,23 +33,29 @@ import selectionReducer from "./selectionSlice"; // 👈 import feed slice
 
 
 
-
-
-
-
-export const logoutUser = async () => {
+export const logoutUser = async (dispatch) => {
   try {
     console.log("🚪 Logging out...");
 
-    // 1️⃣ Sign out from Firebase Auth
+    const user = auth().currentUser;
+
+    if (user?.uid) {
+      await firestore()
+        .collection("users")
+        .doc(user.uid)
+        .update({
+          fcmToken: null,
+        });
+    }
+
     await auth().signOut();
 
-    // 2️⃣ Clear Redux persisted storage
+    // 💥 Reset Redux memory
+    dispatch({ type: "RESET_APP" });
+
+    // 🧹 Clear storage
     await persistor.purge();
     await AsyncStorage.clear();
-
-    // 3️⃣ Reset all reducers in Redux store
-  //  store.dispatch(userLogout()); // optional, if your slice resets manually
 
     console.log("✅ Logged out successfully.");
   } catch (err) {
@@ -53,33 +63,38 @@ export const logoutUser = async () => {
   }
 };
 
-
 const persistConfig = {
   key: "root",
   storage: AsyncStorage,
    whitelist: ["user"], // only persist user slice
 };
 
-const rootReducer = combineReducers({
+const appReducer = combineReducers({
   user: userReducer,
-  feed: feedReducer, // 👈 add feed slice here
-  userPosts:userPostsSlice,
-   comments: commentsReducer,
-       otherProfile: otherProfileReducer,
-       chat:chatReducer,
-       chatList:chatListReducer,
-       otherProfilePost:otherProfilePostReducer,
-       bookmarks:bookmarkReducer,
-       groupChat:groupChatReducer,
-       news:newsReducer,
-       notifications:notificationReducer,
-       jobs:jobsReducer,
-       company:companyReducer,
-       followers:followerReducer,
-       appliedJobs:appliedJobsReducer,
-       selection:selectionReducer
-
+  feed: feedReducer,
+  userPosts: userPostsSlice,
+  comments: commentsReducer,
+  otherProfile: otherProfileReducer,
+  chat: chatReducer,
+  chatList: chatListReducer,
+  otherProfilePost: otherProfilePostReducer,
+  bookmarks: bookmarkReducer,
+  groupChat: groupChatReducer,
+  news: newsReducer,
+  notifications: notificationReducer,
+  jobs: jobsReducer,
+  company: companyReducer,
+  followers: followerReducer,
+  appliedJobs: appliedJobsReducer,
+  selection: selectionReducer,
 });
+
+const rootReducer = (state, action) => {
+  if (action.type === "RESET_APP") {
+    state = undefined; // 💥 wipes everything
+  }
+  return appReducer(state, action);
+};
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 

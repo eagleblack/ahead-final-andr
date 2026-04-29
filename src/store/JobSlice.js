@@ -4,12 +4,12 @@ import auth from '@react-native-firebase/auth';
 import { getChatId } from "../services/chatService";
 const COMPANY_SWIPE_WINDOW_DAYS = 15;
 const JOBS_PER_PAGE = 30;
-import axios from 'axios';
+import axios from 'axios';  
 const sendMatchMessages = async (chatId, userId, companyId, job) => {
   const ref = firestore().collection("chats").doc(chatId);
   const chatDoc = await ref.get();
 
-  if (!chatDoc.exists()) {
+  if (!chatDoc.exists()) {   
     await ref.set({
       participants: [companyId, userId],
       status: "ACCEPTED",
@@ -48,8 +48,57 @@ const sendMatchMessages = async (chatId, userId, companyId, job) => {
     });
   }
 };
-// 🔹 Fetch jobs paginated
+// 🔹View job
+export const viewJob = createAsyncThunk(
+  "jobs/viewJob",
+  async (jobId, { getState, rejectWithValue }) => {
+    console.log("🚀 viewJob called with jobId:", jobId);
+    try {
+      const state = getState();
+      const user = state.user.user;
 
+      if (!user?.uid) throw new Error("User not logged in"); 
+
+      const jobRef = firestore().collection("jobs").doc(jobId);
+      const viewRef = jobRef.collection("views").doc(user.uid);
+
+      await firestore().runTransaction(async (transaction) => {
+        const [jobDoc, viewDoc] = await Promise.all([
+          transaction.get(jobRef),
+          transaction.get(viewRef),
+        ]);
+
+        // ❌ Job doesn't exist
+        if (!jobDoc.exists) {
+          throw new Error("Job does not exist");
+        }
+
+        // ✅ Already viewed → skip
+        if (viewDoc.exists()) {
+          return;
+        }
+
+        // ✅ Mark view
+        transaction.set(viewRef, {
+          userId: user.uid,
+          viewedAt: firestore.FieldValue.serverTimestamp(),
+        });
+
+        // ✅ Increment count safely
+        transaction.update(jobRef, {
+          viewCount: firestore.FieldValue.increment(1),
+        });
+      });
+
+      console.log("✅ View processed");
+      return { jobId, counted: true };
+
+    } catch (error) {
+      console.log("❌ viewJob error:", error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 export const fetchJobs = createAsyncThunk(
   "jobs/fetchJobs",
@@ -84,16 +133,16 @@ export const fetchJobs = createAsyncThunk(
 
       // 🔹 Step 1: Base Firestore query
     let query = firestore()
-  .collection("jobs")
-  .where("status", "==", "open")
+  .collection("jobs") 
+  .where("status", "==", "open") 
   .where("deadline", ">", now); // inequality field
-   console.log(user)
+
 // ✅ Conditionally filter by jobType if user.value exists
 if (user.label=="I am a") {
   
   query = query.where("jobType", "==", user.value);
   console.log("🎯 Filtering jobs for jobType:", user.value);
-} else {
+} else { 
   console.log("⚪ No user.value found — fetching all job types");
 }
 
@@ -116,7 +165,7 @@ query = query
       // 🔹 Step 3: Fetch jobs
       const snapshot = await query.get();
       console.log("📦 Jobs fetched:", snapshot.size);
-
+const hasMore = snapshot.size === JOBS_PER_PAGE;
       // 🔹 Step 4: Check company swipe activity (15-day window)
       const companySwipeCache = new Map();
       const fifteenDaysAgo = firestore.Timestamp.fromDate(
@@ -142,7 +191,7 @@ query = query
             console.log(`⚠️ Swipe check failed for company ${companyId}:`, err);
             companySwipeCache.set(companyId, false);
           }
-        })
+        })   
       );
 
       // 🔹 Step 5: Map jobs with swipe flag
@@ -150,17 +199,23 @@ query = query
         const jobData = doc.data();
         const companyId = jobData.companyId;
         return {
-          id: doc.id,
+          id: doc.id, 
           ...jobData,
           hasCompanySwipedUserRecently: companySwipeCache.get(companyId) || false,
         };
       });
-
+  
       console.log("✅ Jobs prepared:", jobs.length);
-      return jobs;
+      
+     return {
+  jobs,
+  hasMore,
+  lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+};
     } catch (error) {
-      console.warn("🔥 Firestore fetchJobs error:", error);
-      return rejectWithValue(error.message);
+      console.error("🔥 FULL fetchJobs error:",error);
+  
+      return rejectWithValue(error.message); 
     }
   }
 );
@@ -191,7 +246,7 @@ export const swipeJob = createAsyncThunk(
       const swipedJobRef = userRef.collection("swipedJobs").doc(job.id);
       const swipeRef = firestore().collection("swipes").doc();
       const batch = firestore().batch();
-
+const jobRef = firestore().collection("jobs").doc(job.id);
       console.log("📝 Checking if already swiped...");
       const existingSwipe = await swipedJobRef.get();
       console.log(existingSwipe)
@@ -228,12 +283,38 @@ export const swipeJob = createAsyncThunk(
         lastSwipedDeadline: job.deadline || null,
         lastSwipedCreatedAt: job.createdAt || now,
       });
+ if (direction === "right") {
+        batch.update(jobRef, {
+          totalApplicants: firestore.FieldValue.increment(1),
+        });
+      }
 
-      console.log("📤 Committing batch...");
+      // ✅ COMMIT FIRST (CRITICAL)
       await batch.commit();
-      console.log("✅ Batch committed successfully");
+    
+      if(direction=="right"){
 
-      console.log("🏢 Checking if company already swiped this user...");
+        const chatId = getChatId(user.uid, job.id);
+        await sendMatchMessages(chatId, user.uid, job.companyId, job);
+        console.log("💌 Match messages sent!");
+     
+    console.log('Sending notification to Cloud Function...');
+    const response = await axios.post(
+      'https://us-central1-ahead-9fb4c.cloudfunctions.net/notifyMessageApi/send-message-notification',
+      {
+        receiverId: job.companyId,
+        senderId: user.uid,
+        senderUsername:user?.username??'Ahead user',
+        message: "A new user Applied for Job",
+        chatId,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000, // 10 seconds
+      }
+    );
+  
+      }
         
       console.log("✅ swipeJob completed for jobId:", job.id);
       return { jobId: job.id, direction };
@@ -244,14 +325,15 @@ export const swipeJob = createAsyncThunk(
   }
 );
 
-
 // 🔹 Redux slice
 const jobSlice = createSlice({
   name: 'jobs',
   initialState: {
-    jobs: [],
-    loading: false,
-    error: null,
+     jobs: [],
+  loading: false,
+  error: null,
+  hasMore: true,
+  lastDoc: null,
   },
   reducers: {
     resetJobs: (state) => {
@@ -266,8 +348,12 @@ const jobSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchJobs.fulfilled, (state, action) => {
-        state.loading = false;
-        state.jobs = [...state.jobs, ...action.payload];
+       state.loading = false;
+
+  state.jobs = [...state.jobs, ...action.payload.jobs];
+  state.hasMore = action.payload.hasMore;
+  state.lastDoc = action.payload.lastDoc;
+          
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.loading = false;

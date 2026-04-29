@@ -11,6 +11,7 @@ import { JobThemeProvider } from "./src/context/JobThemeContext";
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 import TabNavigator from "./src/navigation/TabNavigator";
 import CustomDrawer from "./src/navigation/CustomDrawer";
+import ExpertScreen from "./src/screens/ExpertScreen";
 
 import Loginpage from "./src/screens/Loginpage";
 import OTPVerificationPage from "./src/screens/OTPVerificationPage";
@@ -44,6 +45,8 @@ import FollowingScreen from "./src/screens/FollowingScreen";
 import AppliedJobsScreen from "./src/screens/AppliedJobsScreen";  
 import AllGroupScreen from "./src/screens/AllGroupScreen";  
 import CandidatesScreen from "./src/screens/CandidatesScreen";  
+import ChooseMethodsScreen from "./src/screens/ChooseMethodsScreen";  
+
 
 
 
@@ -60,10 +63,13 @@ import { listenToUnreadCount } from "./src/services/chatService";
 import { navigationRef, navigate } from "./src/utils/navigationService";
 import NotificationsScreen from "./src/screens/NotificationScreen";
 import PendingVerificationScreen from './src/screens/PendingVerificationScreen'
+import UpgradeRankPage from './src/screens/RankUpgrade'
+
+
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 const { width: screenWidth } = Dimensions.get("window");
-
+  
 // ---------------- Main Drawer + Tabs ----------------
 const MainDrawer = () => {
   const { colors } = useTheme();
@@ -109,9 +115,9 @@ const AppStack = ({ userData }) => {
       {/* 1️⃣ USER HAS NOT COMPLETED ONBOARDING */}
       {!hasChecked && (
         <>
-          <Stack.Screen name="ProfessionSelectPage" component={ProfessionSelectPage} />
-          <Stack.Screen name="UserDetailsPage" component={UserDetailsPage} />
-          <Stack.Screen name="CompanyVerificationPage" component={CompanyVerificationPage} />
+        <Stack.Screen name="ProfessionSelectPage" component={ProfessionSelectPage} />
+        <Stack.Screen name="UserDetailsPage" component={UserDetailsPage} />
+        <Stack.Screen name="CompanyVerificationPage" component={CompanyVerificationPage} />
         </>
       )}
 
@@ -133,6 +139,8 @@ const AppStack = ({ userData }) => {
       <Stack.Screen name="AddPost" component={CreatePostScreen} />
       <Stack.Screen name="MindGrow" component={MindGrow} />
       <Stack.Screen name="StudyScreen" component={StudyScreen} />
+      <Stack.Screen name="ChooseMethods" component={ChooseMethodsScreen} />
+
       <Stack.Screen name="ChatScreen" component={ChatScreen} />
       <Stack.Screen name="EditProfilePage" component={EditProfileScreen} />
       <Stack.Screen name="EditCompProfilePage" component={EditCompProfileScreen} />
@@ -156,6 +164,10 @@ const AppStack = ({ userData }) => {
       <Stack.Screen name="Applied" component={AppliedJobsScreen} />
       <Stack.Screen name="AllGroupScreen" component={AllGroupScreen} />
       <Stack.Screen name="Candidates" component={CandidatesScreen} />
+      <Stack.Screen name="RankUpgrade" component={UpgradeRankPage} />
+      <Stack.Screen name="ExpertScreen" component={ExpertScreen} />
+
+
     </Stack.Navigator>
   );
 };
@@ -163,9 +175,11 @@ const AppStack = ({ userData }) => {
 // ---------------- Unauthenticated Flow ----------------
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-  
+    
     <Stack.Screen name="Loginpage" component={Loginpage} />
     <Stack.Screen name="OTPVerificationPage" component={OTPVerificationPage} />
+     <Stack.Screen name="ProfessionSelectPage" component={ProfessionSelectPage} />
+          <Stack.Screen name="UserDetailsPage" component={UserDetailsPage} />
   </Stack.Navigator>
 );
 

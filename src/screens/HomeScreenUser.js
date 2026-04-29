@@ -11,13 +11,15 @@ Image,
 Dimensions,
 ActivityIndicator,    
 Linking,
+LayoutAnimation,
 } from "react-native";
 import { FAB } from "react-native-paper";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import Icon from "@react-native-vector-icons/material-icons";
 import SIcon from "react-native-vector-icons/SimpleLineIcons";
-
+import { PanGestureHandler, State } from "react-native-gesture-handler";
+import MDIcon from "react-native-vector-icons/Entypo";
 
 
 
@@ -28,6 +30,9 @@ import CustomHeaderTabs from "../components/CustomHeaderTabs";
 
 import FullWidthImage from "../components/FullWidthImage";
 import NewsCard from "../components/NewsCard";
+import PollCard from "../components/PollCard";
+import ReportModal from "../components/ReportModal";
+
 import { timeAgo } from "../utils/time";
 import { Animated } from "react-native";
 import { Avatar } from "react-native-paper";
@@ -39,6 +44,9 @@ toggleBookmark,
 toggleBookmarkOptimistic,
 toggleLike,
 toggleLikeOptimistic,
+removePostOptimistic,
+reportPost,
+markPostSeen,
 } from "../store/feedSlice";
 
 import {
@@ -47,7 +55,7 @@ fetchMoreNews,
 refreshNews,
 clearNews,
 } from "../store/newsSlice";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -59,10 +67,11 @@ const TABS_HEIGHT = 50;
 
 const HomeScreenUser = () => {
 const navigation = useNavigation();
-const { colors } = useTheme();
+  const { colors,theme:mode} = useTheme(); // light | dark | midnight
+
 const dispatch = useDispatch();
 const insets = useSafeAreaInsets();
-
+const pagerRef = useRef(null);
 const scrollY = useRef(new Animated.Value(0)).current;
 const lastScrollY = useRef(0);
 const headerAnim = useRef(new Animated.Value(0)).current; // 0 = shown, 1 = hidden
@@ -77,13 +86,21 @@ outputRange: [1, 0],
 });
 
 const feed = useSelector((state) => state.feed);
-const { news, loadingInitial: isFetchingNews, hasMore } = useSelector(
-(state) => state.news
-);
+const {
+  posts: recentPosts,
+  isFetching: isFetchingRecent,
+  error: recentError,
+} = feed.recent;
+
+const {
+  posts: trendingPosts,
+  isFetching: isFetchingTrending,
+  error: trendingError,
+} = feed.trending;
 const { user: userData } = useSelector((state) => state.user);
 
 const [refreshing, setRefreshing] = useState(false);
-const [activeTab, setActiveTab] = useState("News");
+const [activeTab, setActiveTab] = useState("Post");
 
 const recentListRef = useRef(null);
 const trendingListRef = useRef(null);
@@ -95,9 +112,11 @@ const newsOffsetRef = useRef(0);
 const scrollPositions = useRef({
 Post: 0,
 Trending: 0,
-News: 0,
+News: 0, 
 });
+const [postToReport, setPostToReport] = useState(null); 
 
+const [reportVisible, setReportVisible] = useState(false);
 const syncHeaderWithScroll = (offset) => {
 if (offset <= HEADER_MAX) {
 Animated.timing(headerAnim, {
@@ -114,13 +133,46 @@ useNativeDriver: true,
 }
 };
 // Initial fetch
-useEffect(() => {
-dispatch(fetchRecentPosts());
-dispatch(fetchTrendingPosts());
-dispatch(fetchInitialNews());
-return () => dispatch(clearNews());
-}, []);
 
+const tabs = [ "Post", "Trending"];
+
+const goToNextTab = () => {
+  const index = tabs.indexOf(activeTab);
+  if (index < tabs.length - 1) {
+     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setActiveTab(tabs[index + 1]);
+  }
+};
+
+const goToPrevTab = () => {
+  const index = tabs.indexOf(activeTab);
+  if (index > 0) {
+     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  
+    setActiveTab(tabs[index - 1]);
+  }
+};
+const onSwipe = (event) => {
+  const { translationX, translationY, velocityX, state } = event.nativeEvent;
+
+  if (state === State.END) {
+    const threshold = 80;
+
+    const isHorizontal =
+      Math.abs(translationX) > Math.abs(translationY);
+
+    if (!isHorizontal) return; // ❌ Ignore vertical gestures
+
+    if (translationX < -threshold || velocityX < -800) {
+      goToNextTab();
+    }
+
+    if (translationX > threshold || velocityX > 800) {
+      goToPrevTab();
+    }
+  }
+};
 const onRefresh = async () => {
 setRefreshing(true);
 if (activeTab === "News") await dispatch(refreshNews());
@@ -128,6 +180,7 @@ else if (activeTab === "Trending") await dispatch(fetchTrendingPosts());
 else await dispatch(fetchRecentPosts());
 setRefreshing(false);
 };
+
 Text.render = (function (render) {
 return function (...args) {
 let originText = render.apply(this, args);
@@ -185,7 +238,7 @@ const loadMoreNews = () => {
 if (!isFetchingNews && hasMore) dispatch(fetchMoreNews());
 };
 
-const renderNews = ({ item }) => <NewsCard item={item} colors={colors} />;
+
 const [expanded, setExpanded] = useState({});
 const handleLike = useCallback(
 (post) => {
@@ -204,6 +257,114 @@ dispatch(toggleBookmark(post));
 },
 [dispatch]
 );
+
+const viewabilityConfig = {
+  itemVisiblePercentThreshold: 60,
+};
+
+const seenPostsRef = useRef(new Set());
+const visibleSinceRef = useRef({});
+const dispatchRef = useRef(dispatch);
+
+const MAX_SEEN_CACHE = 500;
+const MIN_VIEW_TIME = 2000; // 2 seconds
+
+useEffect(() => {
+  dispatchRef.current = dispatch;
+}, [dispatch]);
+
+const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
+  const now = Date.now();
+
+  // 🟢 START tracking when item becomes visible
+  viewableItems.forEach(({ item }) => {
+    const postId = item?.id;
+    if (!postId) return;
+
+    if (
+      seenPostsRef.current.has(postId) ||
+      visibleSinceRef.current[postId]
+    ) {
+      return;
+    }
+
+    visibleSinceRef.current[postId] = now;
+  });
+
+  // 🔴 STOP tracking when item leaves view
+  changed.forEach(({ item, isViewable }) => {
+    const postId = item?.id;
+    if (!postId) return;
+
+    if (!isViewable && visibleSinceRef.current[postId]) {
+      const startTime = visibleSinceRef.current[postId];
+      const duration = now - startTime;
+
+      if (
+        duration >= MIN_VIEW_TIME &&
+        !seenPostsRef.current.has(postId)
+      ) {
+        seenPostsRef.current.add(postId);
+
+        // Prevent memory overflow
+        if (seenPostsRef.current.size > MAX_SEEN_CACHE) {
+          seenPostsRef.current.clear();
+        }
+
+        dispatchRef.current(markPostSeen(postId));
+      }
+
+      delete visibleSinceRef.current[postId];
+    }
+  });
+}).current;
+
+useFocusEffect(
+  useCallback(() => {
+    return () => {
+      visibleSinceRef.current = {};
+    };
+  }, [])
+);
+useEffect(() => {
+  const interval = setInterval(() => {
+    const now = Date.now();
+
+    Object.keys(visibleSinceRef.current).forEach((postId) => {
+      const startTime = visibleSinceRef.current[postId];
+
+      if (
+        now - startTime >= MIN_VIEW_TIME &&
+        !seenPostsRef.current.has(postId)
+      ) {
+        seenPostsRef.current.add(postId);
+
+        dispatchRef.current(markPostSeen(postId));
+
+        delete visibleSinceRef.current[postId];
+      }
+    });
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, []); 
+useEffect(() => {
+  visibleSinceRef.current = {};
+}, [activeTab]);
+const viewabilityConfigRef = useRef(viewabilityConfig);
+
+const viewabilityConfigCallbackPairs = useRef([
+  {
+    viewabilityConfig: viewabilityConfigRef.current,
+    onViewableItemsChanged,
+  },
+]);
+const handleReport = (post,data) => {
+  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+  dispatch(removePostOptimistic(post.id));
+ dispatch(reportPost({ postId: post.id, reason: data?.reason })); 
+};
 const renderPost = useCallback(
 ({ item }) => {
 const isExpanded = expanded[item.id] || false;
@@ -211,10 +372,12 @@ const displayText =
 item.content?.length > 120 && !isExpanded
 ? item.content.slice(0, 120) + "..."
 : item.content;
+ 
 
 return (
-<View style={[styles.postContainer, { borderBottomColor: colors.surface }]}>
+<View style={[styles.postContainer, { borderBottomColor: colors.textSecondary,borderBottomWidth:0.2 }]}>
 {/* HEADER ROW */}
+<View style={{flexDirection:'row',justifyContent:'space-between'}}>
 <TouchableOpacity style={styles.headerRow} onPress={() =>
 item?.user.uid === userData.uid
 ? navigation.navigate("Profile")
@@ -233,7 +396,17 @@ item?.user.uid === userData.uid
 </View>
 
 
+
 </TouchableOpacity>
+<TouchableOpacity onPress={()=>{
+  setReportVisible(true)
+  setPostToReport(item)
+}}>
+ <MDIcon name="dots-three-vertical" color={colors.primary} size={18} />
+
+</TouchableOpacity>
+
+</View>
 
 {/* TEXT CONTENT */}
 {item.content && (
@@ -267,7 +440,9 @@ setExpanded((prev) => ({
 </Text>
 </TouchableOpacity>
 )}
-
+{item?.poll && (
+  <PollCard item={item} colors={colors} isVoted={item?.isVoted}/>
+)}
 {/* IMAGE */}
 {item.imageUrl && (
 <FullWidthImage uri={item.imageUrl} resizeMode="contain" />
@@ -311,7 +486,19 @@ Reply
 </TouchableOpacity>
 
 {/* SHARE */}
-
+<View style={styles.actionItem}>
+  <Icon
+    name="visibility"
+    size={20}
+    color={colors.textSecondary}
+  />
+  <Text
+    allowFontScaling={false}
+    style={[styles.actionText, { color: colors.textSecondary }]}
+  >
+    {item.totalViews || 0}
+  </Text>
+</View>
 
 {/* BOOKMARK */}
 <TouchableOpacity
@@ -336,10 +523,19 @@ item.bookmarkedByCurrentUser
 },
 [colors, expanded, handleBookmark, handleLike, navigation, userData.uid]
 );
+ const gradientColors =
+    mode === "midnight"
+      ? ["#1B1B3A", "#0B0B28"]
+      : mode === "dark"
+      ? ["#141414", "#070707"]
+      : ["#E3F2FD", "#BBDEFB"];
+
+      
 
 return (
 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingHorizontal:6 }} edges={['top']}>
 {/* COLLAPSIBLE HEADER CONTAINER */}
+   
 <Animated.View
 style={[
 styles.headerContainer,
@@ -353,25 +549,140 @@ styles.headerContainer,
 </Animated.View>
 
 {/* TABS - always visible, never collapses */}
+
 <View style={{ height: TABS_HEIGHT,borderRadius:20,paddingVertical:10 }}>
+    <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+       
+      >
 <CustomHeaderTabs
-tabs={[ "News","Post", "Trending"]}
-activeTab={activeTab}
-setActiveTab={setActiveTab}
-colors={colors}
+  tabs={["Post","Trending"]}
+  activeTab={activeTab}
+  setActiveTab={setActiveTab}
+  colors={colors}
+  headerAnim={headerAnim} // 👈 ADD THIS
 />
+</LinearGradient>
 </View>
+
 </Animated.View>
 
+
 {/* MAIN CONTENT */}
+<PanGestureHandler onHandlerStateChange={onSwipe} 
+ activeOffsetX={[-20, 20]}   // require horizontal movement
+  failOffsetY={[-10, 10]}     // fail if vertical scroll
+  >
+
 <View style={{ flex: 1 }}>
 {/* POST LIST */}
 <Animated.View
-style={{ flex: 1, display: activeTab === "Post" ? "flex" : "none" }}
+  style={{ flex: 1, display: activeTab === "Post" ? "flex" : "none" }}
 >
-<FlatList
+  {isFetchingRecent && recentPosts.length === 0 ? (
+    <View style={{ flex: 1, paddingTop: HEADER_MAX + TABS_HEIGHT +50 }}>
+  <View style={styles.center}>
+    <ActivityIndicator size="large" color={colors.primary} /> 
+  </View>
+</View>
+  ) : recentError && recentPosts.length === 0 ? (
+    <View
+  style={{
+    flex: 1,
+    paddingTop: HEADER_MAX + TABS_HEIGHT + 50,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  }}
+>
+  <View
+    style={{
+      alignItems: "center",
+      padding: 24,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 5,
+      width: "100%",
+      maxWidth: 320,
+    }}
+  >
+    {/* Icon */}
+    <View
+      style={{
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: colors.primary + "20",
+        marginBottom: 16,
+      }}
+    >
+      <MDIcon name="warning" size={28} color={colors.primary} />
+    </View>
+
+    {/* Title */}
+    <Text
+      style={{
+        fontSize: 18,
+        fontWeight: "700",
+        color: colors.text,
+        marginBottom: 6,
+      }}
+    >
+      Something went wrong
+    </Text>
+
+    {/* Subtitle */}
+    <Text
+      style={{
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: "center",
+        marginBottom: 20,
+        lineHeight: 20,
+      }}
+    >
+      We couldn’t load recent posts. Try again.
+    </Text>
+
+    {/* Button */}
+    <TouchableOpacity
+      onPress={() => dispatch(fetchRecentPosts())}
+      activeOpacity={0.8}
+      style={{
+        backgroundColor: colors.primary,
+        paddingVertical: 10,
+        paddingHorizontal: 22,
+        borderRadius: 999,
+        shadowColor: colors.primary,
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 3,
+      }}
+    >
+      <Text
+        style={{
+          color: "#fff",
+          fontWeight: "600",
+          fontSize: 14,
+        }}
+      >
+        Retry
+      </Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+  ) : (
+  <FlatList
 ref={recentListRef}
-data={feed.recent.posts}
+data={recentPosts}
 keyExtractor={(item) => item.id}
 contentContainerStyle={{
 paddingTop: HEADER_MAX + TABS_HEIGHT,
@@ -412,27 +723,128 @@ useNativeDriver: true,
 
 lastScrollY.current = currentY;
 },
-}
+} 
 )}  
 scrollEventThrottle={16}
 renderItem={renderPost}
 showsVerticalScrollIndicator={false}
+viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current} 
+
 />
+  )}
 </Animated.View>
 
-{/* TRENDING LIST */}
 <Animated.View
-style={{ flex: 1, display: activeTab === "Trending" ? "flex" : "none" }}
+  style={{ flex: 1, display: activeTab === "Trending" ? "flex" : "none" }}
 >
-<FlatList
+  {isFetchingTrending && trendingPosts.length === 0 ? (
+    <View style={{ flex: 1, paddingTop: HEADER_MAX + TABS_HEIGHT +50 }}>
+  <View style={styles.center}>
+    <ActivityIndicator size="large" color={colors.primary} /> 
+  </View>
+  </View>
+  ) : trendingError && trendingPosts.length === 0 ? (
+    <View
+  style={{
+    flex: 1,
+    paddingTop: HEADER_MAX + TABS_HEIGHT + 50,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  }}
+>
+  <View
+    style={{
+      alignItems: "center",
+      padding: 24,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 5,
+      width: "100%",
+      maxWidth: 320,
+    }}
+  >
+    {/* Icon */}
+    <View
+      style={{
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: colors.primary + "20",
+        marginBottom: 16,
+      }}
+    >
+      <MDIcon name="warning" size={28} color={colors.primary} />
+    </View>
+
+    {/* Title */}
+    <Text
+      style={{
+        fontSize: 18,
+        fontWeight: "700",
+        color: colors.text,
+        marginBottom: 6,
+      }}
+    >
+      Something went wrong
+    </Text>
+
+    {/* Subtitle */}
+    <Text
+      style={{
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: "center",
+        marginBottom: 20,
+        lineHeight: 20,
+      }}
+    >
+      We couldn’t load trending posts. Try again.
+    </Text>
+
+    {/* Button */}
+    <TouchableOpacity
+      onPress={() => dispatch(fetchTrendingPosts())}
+      activeOpacity={0.8}
+      style={{
+        backgroundColor: colors.primary,
+        paddingVertical: 10,
+        paddingHorizontal: 22,
+        borderRadius: 999,
+        shadowColor: colors.primary,
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 3,
+      }}
+    >
+      <Text
+        style={{
+          color: "#fff",
+          fontWeight: "600",
+          fontSize: 14,
+        }}
+      >
+        Retry
+      </Text>
+    </TouchableOpacity>
+  </View>
+</View>
+  ) : (
+    <FlatList
 ref={trendingListRef}
-data={feed.trending.posts}
+data={trendingPosts}
 keyExtractor={(item) => item.id}
 contentContainerStyle={{
 paddingTop: HEADER_MAX + TABS_HEIGHT,
 paddingBottom: 100,
 }}
 onEndReached={loadMorePosts}
+viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
 onScroll={Animated.event(
 [{ nativeEvent: { contentOffset: { y: scrollY } } }],
 {
@@ -470,84 +882,24 @@ showsVerticalScrollIndicator={false}
 scrollEventThrottle={16}
 renderItem={renderPost}  
 />
+  )}
 </Animated.View>
 
-{/* NEWS LIST */}
-<Animated.View
-style={{ flex: 1, display: activeTab === "News" ? "flex" : "none" }}
->
-<FlatList
-ref={newsListRef}
-data={news}
-keyExtractor={(item) => item.id}
-renderItem={renderNews}
-contentContainerStyle={{
-paddingTop: HEADER_MAX + TABS_HEIGHT/2,
-}}
-onEndReached={loadMoreNews}
-onScroll={Animated.event(
-[{ nativeEvent: { contentOffset: { y: scrollY } } }],
-{
-useNativeDriver: false,
-listener: (event) => {
-const currentY = event.nativeEvent.contentOffset.y;
-
-scrollPositions.current[activeTab] = currentY;
-
-const diff = currentY - lastScrollY.current;
-
-// User scrolls DOWN → hide header
-if (diff > 5 && currentY > 50) {
-Animated.timing(headerAnim, {
-toValue: 1,
-duration: 150,
-useNativeDriver: true,
-}).start();
-}
-
-// User scrolls UP → show header
-if (diff < -5) {
-Animated.timing(headerAnim, {
-toValue: 0,
-duration: 150,
-useNativeDriver: true,
-}).start();
-}
-
-lastScrollY.current = currentY;
-},
-}
-)}
-showsVerticalScrollIndicator={false}
-scrollEventThrottle={16}
-pagingEnabled
-snapToInterval={PAGE_HEIGHT}
-snapToAlignment="start"
-decelerationRate="fast"
-disableIntervalMomentum={true}
-/>
-</Animated.View>
 </View>
-
+</PanGestureHandler>
 
 {/* FAB */}
-{activeTab!="News"?
-<TouchableOpacity
-activeOpacity={0.85}
-onPress={() => navigation.navigate("AddPost")}
-style={[styles.fabWrapper,{bottom:120}]}
->
-<LinearGradient
-colors={["#F58AC9", "#3B82F6"]}
-start={{ x: 0, y: 0 }}
-end={{ x: 1, y: 0 }}
-style={styles.fab}
->
-<Icon name="help" size={22} color="#fff" />
-<Text style={styles.fabText}>Ask a Question</Text>
-</LinearGradient>
-</TouchableOpacity>
-:""}
+
+
+<ReportModal
+  visible={reportVisible}
+  onClose={() => setReportVisible(false)}
+  onSubmit={(data) => {
+   
+      handleReport(postToReport,data)
+      setReportVisible(false)
+  }}
+/>
 </SafeAreaView>
 );
 };
@@ -665,9 +1017,10 @@ fontWeight: "600",
 
 fab: {
 position: "absolute",  
-bottom: 120,
+bottom: 130,
 right: 20,
 zIndex: 100,
+paddingVertical:10,
 },
 
 /* POST STYLE */
@@ -684,7 +1037,7 @@ marginBottom: 6,
 },
 userInfo: {
 marginLeft: 10,
-flex: 1,
+
 },
 userName: { fontSize: 15, fontWeight: "600" },
 userTagline: { fontSize: 12, marginTop: 1 },
@@ -722,19 +1075,20 @@ marginLeft: 6,
 fabWrapper: {
 position: "absolute",
 right: 16,
-bottom: 120,
+bottom: 130,
 },
 
 fab: {
 flexDirection: "row",
 alignItems: "center",
 paddingHorizontal: 16,
-height:36,
+height:46,
 borderRadius: 26,
 shadowColor: "#3B82F6",
 shadowOpacity: 0.25,
 shadowRadius: 10,
 elevation: 6,
+
 },
 
 fabText: {

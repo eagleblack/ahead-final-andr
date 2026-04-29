@@ -166,21 +166,26 @@ const OTPVerificationPage = ({ route, navigation }) => {
             <View style={styles.otpContainer}>
               {otpDigits.map((digit, index) => (
                 <PaperInput
-                  key={index}
-                  mode="outlined"
-                  value={digit}
-                  onChangeText={(value) => handleOtpChange(value.slice(-1), index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  style={[styles.otpBox, { borderColor: colors.primary,backgroundColor:'#EDF5FF' }]}
-                  theme={{ colors: { text: 'black', primary: 'black' } }}
-                  onKeyPress={({ nativeEvent }) => {
-                    if (nativeEvent.key === "Backspace" && !otpDigits[index] && index > 0) {
-                      inputRefs.current[index - 1]?.focus();
-                    }  
-                  }}
-                />
+  key={index}
+  mode="outlined"
+  value={digit}
+  onChangeText={(value) => handleOtpChange(value.slice(-1), index)}
+  keyboardType="number-pad"
+  maxLength={1}
+  ref={(el) => (inputRefs.current[index] = el)}
+  style={[
+    styles.otpBox,
+    {
+      borderColor: colors.primary,
+      backgroundColor: "#EDF5FF",
+      color: "black",        // <-- add this
+    },
+  ]}
+  textColor="black"          // <-- and/or this
+  outlineColor="black"
+  activeOutlineColor="black"
+  theme={{ colors: { primary: "black" } }}
+/>
               ))}
             </View>
           )}

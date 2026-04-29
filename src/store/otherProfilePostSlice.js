@@ -21,7 +21,29 @@ const togglingPosts = new Set();
 // ----------------------------
 const enrichPosts = async (posts, currentUserId) => {
   if (!posts.length) return [];
+    const reportsSnap = await firestore()
+    .collectionGroup("reports")
+    .where("userId", "==", currentUserId)
+    .orderBy("createdAt", "desc")
+    .get();
+console.log("REPORT DOCS:", reportsSnap.docs.length);
 
+reportsSnap.docs.forEach((doc) => {
+  console.log("Report Path:", doc.ref.path);
+  console.log("Post ID:", doc.ref.parent.parent?.id);
+});
+  const reportedPostIds = new Set(
+    reportsSnap.docs
+      .map((doc) => doc.ref.parent.parent?.id)
+      .filter(Boolean)
+  );
+
+  // ✅ STEP 2: filter safely.  
+  const filteredPosts = posts.filter(
+    (post) => !reportedPostIds.has(post.id)
+  );
+
+  if (!filteredPosts.length) return [];
   const userIds = [...new Set(posts.map((p) => p.userId).filter(Boolean))];
 
   const userMap = {};
@@ -50,24 +72,108 @@ const enrichPosts = async (posts, currentUserId) => {
   const bookmarkedPostIds = bookmarksSnapshot.docs.map(
     (d) => d.ref.parent.parent.id
   );
+const votesSnapshot = await firestore()
+  .collectionGroup("votes")
+  .where("userId", "==", currentUserId)
+   .orderBy("createdAt", "desc")
+  .get();
 
-  return posts.map((post) => {
-    const userData = userMap[post.userId] || {};
-    return {
-      ...post,
-      likedByCurrentUser: likedPostIds.includes(post.id),
-      bookmarkedByCurrentUser: bookmarkedPostIds.includes(post.id),
-      totalLikes: post.totalLikes || 0,
-      user: {
-        uid: userData.uid || post.userId,
-        name: userData.name || "Anonymous",
-        profilePic: userData.profilePic || "https://i.pravatar.cc/150",
-        tagline: userData.profileTitle || "A new user",
-      },
-    };
-  });
+const voteMap = {};
+votesSnapshot.docs.forEach((doc) => {
+  const postId = doc.ref.parent.parent.id;
+  voteMap[postId] = doc.data().optionIndex;
+});
+ return filteredPosts.map((post) => {
+  const userData = userMap[post.userId] || {};
+
+  const votedOption = voteMap[post.id]; // 👈 get voted option
+
+  return {
+    ...post,
+    likedByCurrentUser: likedPostIds.includes(post.id),
+    bookmarkedByCurrentUser: bookmarkedPostIds.includes(post.id),
+    totalLikes: post.totalLikes || 0,
+    totalViews: post.totalViews || 0,
+
+    // ✅ FIXED
+    isVoted: votedOption !== undefined,
+    votedOption: votedOption ?? null,
+
+    user: {
+      uid: userData.uid || post.userId,
+      name: userData.name || "Anonymous",
+      avatar: userData.profilePic || "https://i.pravatar.cc/150",
+      tagline: userData.profileTitle || "A new user",
+    },
+  };
+});  
 };
+export const votePollOtherProfile = createAsyncThunk(
+  "otherProfile/votePoll",
+  async ({ postId, optionIndex }, { rejectWithValue }) => {
+    try {
+      console.error(postId,optionIndex)
+      const user = auth().currentUser;
+      if (!user) throw new Error("Not authenticated");
 
+      const db = firestore();
+      const postRef = db.collection("posts").doc(postId);
+      const voteRef = postRef.collection("votes").doc(user.uid);
+await db.runTransaction(async (transaction) => {
+  const postDoc = await transaction.get(postRef);
+  const voteDoc = await transaction.get(voteRef);
+
+  const postData = postDoc.data();
+  if (!postData?.poll?.options) {
+    throw new Error("Poll data missing");
+  }
+
+  let options = [...postData.poll.options];
+  let totalVotes = postData.poll.totalVotes || 0;
+
+  if (voteDoc.exists()) {
+    const prevIndex = voteDoc.data()?.optionIndex;
+
+    if (prevIndex === optionIndex) return;
+
+    // 🔄 revote
+    if (typeof prevIndex === "number") {
+      options[prevIndex].votes -= 1;
+    }
+
+    options[optionIndex].votes += 1;
+
+    transaction.update(voteRef, {
+      optionIndex,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+  } else {
+    // 🆕 first vote
+    options[optionIndex].votes += 1;
+    totalVotes += 1;
+
+    transaction.set(voteRef, {
+      userId: user.uid,
+      optionIndex,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ✅ SAFE update (whole array)
+  transaction.update(postRef, {
+    "poll.options": options,
+    "poll.totalVotes": totalVotes,
+  });
+});
+
+      return { postId, optionIndex };
+    } catch (e) {
+      console.error(e)
+      return rejectWithValue(e.message);
+    }
+  }
+);
 // ----------------------------
 // 🔹 Fetch other user posts (paginated)
 // ----------------------------
@@ -375,6 +481,32 @@ const otherProfilePostSlice = createSlice({
     state.isFetching = false;
     state.error = null;
   },
+ votePollOptimisticUserProfile: (state, action) => {
+  const { postId, optionIndex } = action.payload;
+
+  const post = state.posts.find((p) => p.id === postId);
+  if (!post || !post.poll?.options) return;
+
+  const prev = post.votedOption;
+
+  // 🆕 First vote
+  if (prev === null || prev === undefined) {
+    post.poll.options[optionIndex].votes += 1;
+    post.poll.totalVotes += 1;
+  }
+
+  // 🔄 Revote
+  else if (prev !== optionIndex) {
+    if (typeof prev === "number" && post.poll.options[prev]) {
+      post.poll.options[prev].votes -= 1;
+    }
+    post.poll.options[optionIndex].votes += 1;
+  }
+
+  // ✅ update local state
+  post.votedOption = optionIndex;
+  post.isVoted = true;
+},
   },
   extraReducers: (builder) => {
     builder
@@ -428,5 +560,5 @@ const otherProfilePostSlice = createSlice({
   },
 });
 
-export const { toggleLikeOptimisticotherprofile, toggleBookmarkOptimistic,  clearPosts, } = otherProfilePostSlice.actions;
+export const { toggleLikeOptimisticotherprofile, toggleBookmarkOptimistic,  clearPosts,votePollOptimisticUserProfile } = otherProfilePostSlice.actions;
 export default otherProfilePostSlice.reducer;

@@ -24,6 +24,7 @@ import { toggleLikeOptimistic } from "../store/feedSlice";
 import firestore from "@react-native-firebase/firestore";
 import { timeAgo } from "../utils/time";
 import FullWidthImage from "./FullWidthImage";
+import PollCard from "./PollCard";
 
 export default function UserPosts({ navigation }) {
   const { colors } = useTheme();
@@ -137,7 +138,9 @@ export default function UserPosts({ navigation }) {
               </Text>
             </TouchableOpacity>
           )}
-
+{item?.poll && (
+  <PollCard item={item} colors={colors} isVoted={item?.isVoted}/>
+)}
           {/* Image */}
           {item.imageUrl && (
             <FullWidthImage uri={item.imageUrl} resizeMode="contain" />

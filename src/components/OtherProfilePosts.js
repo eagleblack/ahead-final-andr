@@ -31,6 +31,7 @@ import {
 import { timeAgo } from "../utils/time";
 import { toggleLikeOptimistic } from "../store/feedSlice";
 import FullWidthImage from "./FullWidthImage";
+import PollCard from "./PollCard";
 
 export default function OtherProfilePosts({ navigation, otherUserId }) {
   const { colors } = useTheme();
@@ -38,7 +39,7 @@ export default function OtherProfilePosts({ navigation, otherUserId }) {
   const { posts, isFetching, lastPostFetched, isLastPage } = useSelector(
     (state) => state.otherProfilePost
   );
-  console.log(otherUserId)
+
   const [expanded, setExpanded] = useState({});
 
   // Fetch initial posts
@@ -61,6 +62,8 @@ useEffect(() => {
   };
 
   const renderItem = ({ item }) => {
+
+
     const isExpanded = expanded[item.id] || false;
     const displayText = isExpanded
       ? item.content
@@ -112,7 +115,9 @@ useEffect(() => {
               </Text>
             </TouchableOpacity>
           )}
-
+{item?.poll && (
+  <PollCard item={item} colors={colors} isVoted={item?.isVoted} />
+)}
           {/* Image */}
                {item.imageUrl && <FullWidthImage uri={item.imageUrl} resizeMode="contain" />}
 

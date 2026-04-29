@@ -52,7 +52,7 @@ export default function RadarScreen() {
     <View style={styles.container}>
       <View style={{position:'absolute',top:40}}>
         <Text allowFontScaling={false}  style={{color:'white',fontSize:15,fontWeight:800,textAlign:'center',padding:10}}>
-          RPSL onboarding begins from March onwards, with 500+ verified RPSL employers planned.
+          No jobs Found.
         </Text>
 
       </View>

@@ -3,6 +3,8 @@ import React from "react";
 import { View, Text, Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
+import Feather from "react-native-vector-icons/Feather";
+
 
 import { useTheme } from "../context/ThemeContext";
 import { useSelector } from "react-redux";
@@ -10,12 +12,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Screens
 import HomeScreen from "../screens/HomeScreen";
-import ExpertScreen from "../screens/ExpertScreen";
 import JobScreen from "../screens/JobScreen";
 import HireScreen from "../screens/HireScreen";
 import ChatScreen from "../screens/ChatScreen";
+import ChatScreenCompany         from "../screens/ChatScreenCompany";
+
 import GroupScreen from "../screens/GroupScreen";
 import PostJobScreen from "../screens/PostJobScreen";
+import StudyScreen from "../screens/StudyScreen";
+import GroupChatScreen from "../screens/GroupChatScreen";
+import NewsScreen from "../screens/NewsScreen";
+
+import { Circle } from "react-native-svg";
 
 const Tab = createBottomTabNavigator();
 
@@ -27,11 +35,12 @@ const TabNavigator = () => {
 
   // 🔵 ICON MAP
   const icons = {
-    Dashboard: "th-list",
-    Mentor: "user-tie",
+    Post: "home",
+    News: "newspaper",
     Career: "anchor",
     Message: "envelope",
     Circle: "users",
+    Home: "home",
   };
 
   const screenOptions = ({ route }) => ({
@@ -39,7 +48,15 @@ const TabNavigator = () => {
 
     tabBarIcon: ({ focused }) => {
       const color = focused ? colors.primary : colors.textSecondary;
-
+  if (route.name === "Post") {
+    return (
+      <Feather
+        name="home"
+        size={22}
+        color={color}
+      />
+    );
+  }
       return (
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <FontAwesome5
@@ -115,18 +132,19 @@ const TabNavigator = () => {
   if (userData?.userType === "company") {
     return (
       <Tab.Navigator screenOptions={screenOptions}>
-        <Tab.Screen name="Dashboard" component={HomeScreen} />
+        <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen name="Career" component={PostJobScreen} />
-        <Tab.Screen name="Message" component={ChatScreen} />
+        <Tab.Screen name="Message" component={ChatScreenCompany} />
       </Tab.Navigator>
     );
   }
 
   // 🔵 NORMAL USER
   return (
-    <Tab.Navigator screenOptions={screenOptions}>
-      <Tab.Screen name="Dashboard" component={HomeScreen} />
-      <Tab.Screen name="Mentor" component={ExpertScreen} />
+    <Tab.Navigator screenOptions={screenOptions}>  
+      <Tab.Screen name="News" component={NewsScreen} />
+
+      <Tab.Screen name="Post" component={HomeScreen} />
 
       <Tab.Screen
         name="Career"

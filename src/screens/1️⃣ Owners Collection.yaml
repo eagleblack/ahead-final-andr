@@ -1,0 +1,234 @@
+1️⃣ Owners Collection
+owners/{ownerId}
+
+Represents each dairy owner.
+
+Fields:
+
+{
+  name: string,
+  phone: string,
+  createdAt: Timestamp
+}
+
+Example:
+
+{
+  "name": "Dairy Farm A",
+  "phone": "+919876543210",
+  "createdAt": "2025-01-01T10:00:00Z"
+}
+2️⃣ Vendors under Owner
+owners/{ownerId}/vendors/{vendorId}
+
+Represents a vendor as created by a specific owner.
+
+Fields:
+
+{
+  name: string,
+  phone: string,
+  milkType: "cow" | "buffalo" | "goat" | "camel" | "mixed",
+  pricePerLiter: number,       // current default
+  openingBalance: number,      // for first month
+  currentBalance: number,      // updated in transaction
+  createdAt: Timestamp,
+  isActive: boolean
+}
+
+Example:
+
+{
+  "name": "Ramesh",
+  "phone": "+919812345678",
+  "milkType": "cow",
+  "pricePerLiter": 50,
+  "openingBalance": 0,
+  "currentBalance": 1200,
+  "createdAt": "2025-03-01T09:00:00Z",
+  "isActive": true
+}
+3️⃣ Entries under Owner
+owners/{ownerId}/entries/{entryId}
+
+All milk, advance, or adjustment entries, flat collection under owner.
+
+Fields:
+
+{
+  vendorId: string,
+  type: "milk" | "advance" | "adjustment",
+  milkSession?: "morning" | "evening",
+  milkType?: "cow" | "buffalo" | "goat" | "camel" | "mixed",
+  liters?: number,
+  pricePerLiter?: number, // store actual price at time of milk entry
+  amount: number,         // milk or advance or adjustment
+  reason?: string,        // for adjustments
+  phase: 1 | 2 | 3,
+  date: Timestamp,
+  monthKey: string,       // "2025-03"
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+  isVoided: boolean,
+  voidedAt?: Timestamp | null,
+  originalEntryId?: string | null
+}
+
+Example:
+
+{
+  "vendorId": "ramesh123",
+  "type": "milk",
+  "milkSession": "morning",
+  "milkType": "cow",
+  "liters": 10,
+  "pricePerLiter": 50,
+  "amount": 500,
+  "phase": 1,
+  "date": "2025-03-01T06:00:00Z",
+  "monthKey": "2025-03",
+  "createdAt": "2025-03-01T06:05:00Z",
+  "updatedAt": "2025-03-01T06:05:00Z",
+  "isVoided": false
+}
+4️⃣ Monthly Snapshots per Vendor
+owners/{ownerId}/vendors/{vendorId}/snapshots/{monthKey}
+
+Stores summary of a vendor for a given month, used for opening balance, closing balance, and phase-level calculation.
+
+Fields:
+
+{
+  openingBalance: number,
+  closingBalance: number,
+  totalMilkLiters: number,
+  totalMilkAmount: number,
+  totalAdvance: number,
+  lastUpdated: Timestamp
+}
+
+Example:
+
+{
+  "openingBalance": 1200,
+  "closingBalance": 2000,
+  "totalMilkLiters": 100,
+  "totalMilkAmount": 5000,
+  "totalAdvance": 2000,
+  "lastUpdated": "2025-03-31T18:00:00Z"
+}
+
+Phase-level balances are calculated on the fly from the snapshot + entries.
+
+5️⃣ Top-Level Vendor Collection (Mirror)
+vendors/{phoneNumber}
+
+Represents vendor globally, used for login and showing balances across multiple owners.
+
+Fields:
+
+{
+  name: string,
+  phone: string,
+  owners: [
+    {
+      ownerId: string,
+      ownerName: string
+    }
+  ],
+  balances: [
+    {
+      ownerId: string,
+      ownerName: string,
+      currentBalance: number,
+      lastUpdated: Timestamp
+    }
+  ],
+  createdAt: Timestamp
+}
+
+Example:
+
+{
+  "name": "Ramesh",
+  "phone": "+919812345678",
+  "owners": [
+    {"ownerId": "ownerA", "ownerName": "Dairy Farm A"},
+    {"ownerId": "ownerB", "ownerName": "Dairy Farm B"}
+  ],
+  "balances": [
+    {"ownerId": "ownerA", "ownerName": "Dairy Farm A", "currentBalance": 2000, "lastUpdated": "2025-03-31T18:00:00Z"},
+    {"ownerId": "ownerB", "ownerName": "Dairy Farm B", "currentBalance": 500, "lastUpdated": "2025-03-31T18:00:00Z"}
+  ],
+  "createdAt": "2025-03-01T09:00:00Z"
+}
+
+Whenever an owner adds a milk/advance/adjustment entry, Cloud Function or transaction updates both:
+
+Owner/vendor ledger entry
+
+Owner/vendor snapshot
+
+Vendor mirror balance
+
+6️⃣ Entry Versioning / Immutable Ledger
+
+Do not edit entries directly.
+
+If an old entry is changed:
+
+Mark old entry as isVoided = true
+
+Add a new entry with updated values
+
+Recalculate the monthly snapshot
+
+This ensures you have an audit trail and simplifies balance calculations.
+
+7️⃣ Recommended Indexes
+
+owners/{ownerId}/entries:
+
+(vendorId, monthKey) → for fetching all entries for a vendor in a month
+
+(monthKey, phase) → for phase-level queries
+
+owners/{ownerId}/vendors:
+
+createdAt → list vendors by creation date
+
+vendors:
+
+phone → for login
+
+balances.ownerId → to fetch vendor’s balance per owner quickly
+
+
+
+ Optional price history per vendor
+
+If you want to track the evolution of milk prices per vendor:
+
+owners/{ownerId}/vendors/{vendorId}/price_history/{timestamp}
+
+Fields:
+
+{
+  milkType: "cow" | "buffalo" | "goat" | "camel" | "mixed",
+  pricePerLiter: number,
+  effectiveFrom: Timestamp,
+  effectiveTo?: Timestamp | null
+}
+
+Example:
+
+{
+  "milkType": "cow",
+  "pricePerLiter": 50,
+  "effectiveFrom": "2025-03-01T00:00:00Z",
+  "effectiveTo": "2025-03-05T08:59:59Z"
+}
+
+When adding a new milk entry, you can look up the price_history effective on that date.
+
+Editing old milk price just adds a new entry in price_history and creates voided+new milk entries for recalculation.

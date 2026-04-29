@@ -106,26 +106,16 @@ const DUMMY_PROFILE_PIC = "https://randomuser.me/api/portraits/men/75.jpg";
          
         </TouchableOpacity>:""}
 
-        {
-        userData.userType === "company"?"":
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{navigation.navigate('MindGrow')}}>
-         <Icon name="lightbulb" size={20} color={colors.text} />
+      
+ {
+        userData.userType === "company"?"": <TouchableOpacity style={styles.menuItem} onPress={()=>{navigation.navigate("RankUpgrade")}}>
+<IconF name="trending-up" size={20} color={colors.text} />
           <Text allowFontScaling={false}  style={[styles.menuText, { color: colors.text }]}>
-            Mind Developing Games
+            Upgrade Rank
           </Text>
          
         </TouchableOpacity>
-}
-  {
-        userData.userType === "company"?"":
-          <TouchableOpacity style={styles.menuItem} onPress={()=>{navigation.navigate('StudyScreen')}}>
-          <Icon name="book" size={20} color={colors.text} />
-          <Text allowFontScaling={false}  style={[styles.menuText, { color: colors.text }]}>
-           Learn
-          </Text>
-         
-        </TouchableOpacity>
-}
+      }
       </View>
 
       {/* Bottom Section */}
@@ -216,3 +206,24 @@ const styles = StyleSheet.create({
 });
 
 export default CustomDrawer;
+
+/*  {
+        userData.userType === "company"?"":
+          <TouchableOpacity style={styles.menuItem} onPress={()=>{navigation.navigate('MindGrow')}}>
+         <Icon name="lightbulb" size={20} color={colors.text} />
+          <Text allowFontScaling={false}  style={[styles.menuText, { color: colors.text }]}>
+            Mind Developing Games
+          </Text>
+         
+        </TouchableOpacity>
+}
+  {
+        userData.userType === "company"?"":
+          <TouchableOpacity style={styles.menuItem} onPress={()=>{navigation.navigate('StudyScreen')}}>
+          <Icon name="book" size={20} color={colors.text} />
+          <Text allowFontScaling={false}  style={[styles.menuText, { color: colors.text }]}>
+           Learn
+          </Text>
+         
+        </TouchableOpacity>
+} */

@@ -60,6 +60,7 @@ export const fetchRequestedChats = createAsyncThunk(
           requestedBy: data.requestedBy,
           acceptedBy: data.acceptedBy,
           lastMessage: data.lastMessage || null,
+           jobId:data?.jobId || null,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           user,
@@ -107,6 +108,7 @@ export const fetchMoreRequestedChats = createAsyncThunk(
           status: data.status,
           requestedBy: data.requestedBy,
           acceptedBy: data.acceptedBy,
+          jobId:data?.jobId || null,
           lastMessage: data.lastMessage || null,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
@@ -204,6 +206,7 @@ export const listenToRequestedChats = (currentUserId, dispatch, limitCount = 10)
         acceptedBy: data.acceptedBy,
         lastMessage: data.lastMessage || null,
         createdAt: data.createdAt,
+        jobId:data?.jobId || null,
         updatedAt: data.updatedAt,
         user,
       });

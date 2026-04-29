@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -86,21 +86,29 @@ const EditProfileScreen = ({ navigation }) => {
   const [bio, setBio] = useState(userData?.bio || "");
   const [profileTitle, setProfileTitle] = useState(userData?.profileTitle || "");
   const [linkedin, setLinkedin] = useState(userData?.linkedin || "");
-  const [experiences, setExperiences] = useState(userData?.experiences || []);
-  const [education, setEducation] = useState(userData?.education || []);
-  const [profilePic, setProfilePic] = useState(userData?.profilePic || null);
+  const [experiences, setExperiences] = useState( []);
+  const [education, setEducation] = useState([]);
+  const [profilePic, setProfilePic] = useState( null);
 const [certifications, setCertifications] = useState(
-  userData?.certifications || []
-);
+ []
+); 
+useEffect(() => {
+  if (userData) {
+    setExperiences(userData.experiences || []);
+    setEducation(userData.education || []);
+    setCertifications(userData.certifications || []);
+  }
+}, [userData]);
   // ---------------- Experience ----------------
   const addExperience = () => {
     setExperiences([...experiences, { title: "", org: "", from: "", to: "", desc: "" }]);
   };
   const updateExperience = (i, field, val) => {
-    const updated = [...experiences];
-    updated[i][field] = val;
-    setExperiences(updated);
-  };
+  const updated = experiences.map((item, index) =>
+    index === i ? { ...item, [field]: val } : item
+  );
+  setExperiences(updated);
+};
   const removeExperience = (i) => setExperiences(experiences.filter((_, idx) => idx !== i));
 
   // ---------------- Education ----------------
@@ -108,8 +116,9 @@ const [certifications, setCertifications] = useState(
     setEducation([...education, { degree: "", institution: "", from: "", to: "" }]);
   };
   const updateEducation = (i, field, val) => {
-    const updated = [...education];
-    updated[i][field] = val;
+   const updated = education.map((item, index) =>
+    index === i ? { ...item, [field]: val } : item
+  );
     setEducation(updated);
   };
   const removeEducation = (i) => setEducation(education.filter((_, idx) => idx !== i));
@@ -127,8 +136,9 @@ const addCertification = () => {
 };
 
 const updateCertification = (index, field, value) => {
-  const updated = [...certifications];
-  updated[index][field] = value;
+   const updated = certifications.map((item, index) =>
+    index === i ? { ...item, [field]: val } : item
+  );
   setCertifications(updated);
 };
 
@@ -326,8 +336,8 @@ const uploadResume = async () => {
             onPress={uploadResume}
             loading={loading}
             disabled={loading}
-            style={[styles.addBtn, { borderColor: colors.secondary }]}
-            labelStyle={{ color: colors.secondary, fontWeight: "600" }}
+            style={[styles.addBtn, { borderColor: colors.primary }]}
+            labelStyle={{ color: colors.primary, fontWeight: "600" }}
           >
             📄 Upload Resume
           </Button>

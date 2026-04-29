@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated, Easing } from "react-native";
-import Icon from "@react-native-vector-icons/material-icons";
+import Icon from "react-native-vector-icons/MaterialIcons";
 import LinearGradient from "react-native-linear-gradient";
 import { themes } from "../themes/themes";
 import { useJobTheme } from "../context/JobThemeContext";
@@ -63,14 +63,14 @@ const JobCardApplied = ({ job }) => {
           colors={["#6A11CB", "#2575FC"]}
           style={[StyleSheet.absoluteFillObject, { borderRadius: 16 }]}
         />
-        <Text style={styles.logoText}>
+        <Text allowFontScaling={false}  style={styles.logoText}>
           {job.company?.[0]?.toUpperCase() || "C"}
         </Text>
       </View>
 
       {/* Title + Company */}
-      <Text style={styles.title}>{job.title || "Untitled Job"}</Text>
-      <Text style={styles.subtitle}>{job.company || "Unknown Company"}</Text>
+      <Text allowFontScaling={false}  style={styles.title}>{job.title || "Untitled Job"}</Text>
+      <Text allowFontScaling={false}  style={styles.subtitle}>{job.company || "Unknown Company"}</Text>
 
       {/* Status */}
       <View
@@ -79,7 +79,7 @@ const JobCardApplied = ({ job }) => {
           { backgroundColor: currentStatus.bg },
         ]}
       >
-        <Text
+        <Text allowFontScaling={false} 
           style={[
             styles.statusText,
             { color: currentStatus.text },
@@ -92,42 +92,56 @@ const JobCardApplied = ({ job }) => {
       {/* Location + Salary */}
       <View style={styles.row}>
         <Icon name="location-on" size={20} color="#FF6F61" />
-        <Text style={styles.info}>{job.location || "N/A"}</Text>
+        <Text allowFontScaling={false}  style={styles.info}>{job.location || "N/A"}</Text>
 
         <Icon name="payments" size={20} color="#FFB400" style={styles.iconSpacing} />
-        <Text style={styles.info}>{job.salary || "Not Disclosed"}</Text>
+        <Text allowFontScaling={false}  style={styles.info}>{job.salary || "Not Disclosed"}</Text>
       </View>
 
       {/* Type + Remote */}
       <View style={styles.row}>
         <Icon name="work" size={20} color="#4CAF50" />
-        <Text style={styles.info}>
-          {job?.type || job?.shift || "N/A"}
+        <Text allowFontScaling={false}  style={styles.info}>
+          {job?.type || 'N/A' }
         </Text>
 
-        <Icon name="home" size={20} color="#007BFF" style={styles.iconSpacing} />
-        <Text style={styles.info}>
-          {job?.remote ? "Remote" : "On-site"}
+      
+      </View>
+      <View style={{flexDirection:'row',marginVertical:10}}>
+
+      <Icon name="home" size={20} color="#007BFF" style={{}} />
+        <Text allowFontScaling={false}  style={styles.info}>
+          {job?.jobCategory }
         </Text>
       </View>
 
       {/* Skills */}
-      <Text style={styles.sectionLabel}>Key Skills:</Text>
-      <View style={styles.skillsContainer}>
-  {Array.isArray(job?.skills) && job.skills.length > 0 ? (
-    job.skills.slice(0, 6).map((skill, i) => (
-      <View key={i} style={styles.skillTag}>
-        <Text style={styles.skillText}>{skill}</Text>
-      </View>
-    ))
-  ) : (
-    <Text style={styles.noSkills}>N/A</Text>
-  )}
-</View>
+      <Text allowFontScaling={false}  style={styles.sectionLabel}>Key Skills:</Text>
+    <View style={styles.skillsContainer}>
+          {(() => {
+            let skillsArray = [];
+  
+            if (Array.isArray(job?.skills)) {
+              skillsArray = job.skills;
+            } else if (typeof job?.skills === "string") {
+              skillsArray = job.skills.split(",").map((s) => s.trim());
+            }
+  
+            return skillsArray.length > 0 ? (
+              skillsArray.slice(0, 6).map((skill, index) => (
+                <View key={index} style={styles.skillTag}>
+                  <Text allowFontScaling={false}style={styles.skillText}>{skill}</Text>
+                </View>
+              ))
+            ) : (
+              <Text allowFontScaling={false}style={styles.keySkills}>N/A</Text>
+            );
+          })()}
+        </View>
 
       {/* Description */}
-      <Text style={styles.sectionLabel}>Description:</Text>
-      <Text style={styles.description}>
+      <Text allowFontScaling={false}  style={styles.sectionLabel}>Description:</Text>
+      <Text allowFontScaling={false}  style={styles.description}>
         {job.description || "No description available."}
       </Text>
     </Animated.View>

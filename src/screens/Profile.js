@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,35 +15,41 @@ import { fetchUser } from "../store/userSlice";
 import { ActivityIndicator, Button } from "react-native-paper";
 import Icon from "react-native-vector-icons/Ionicons";
 import MaterialDesignIcons from "react-native-vector-icons/Feather";
-
-MaterialDesignIcons
 import UserPosts from "../components/UserPosts";
-import YourPosting from "../components/YourPosting";
 import { useNavigation } from "@react-navigation/native";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
+import Feather from "react-native-vector-icons/Feather";
 
 const DUMMY_PROFILE_PIC = "https://randomuser.me/api/portraits/men/75.jpg";
 
-const ProfilePage = ({  }) => {
-  const navigation=useNavigation()
+const ProfilePage = () => {
+  const navigation = useNavigation();
   const { colors } = useTheme();
   const dispatch = useDispatch();
   const { user: userData, loading } = useSelector((state) => state.user);
-
   const [activeTab, setActiveTab] = useState("Posts");
-
+const scrollRef = useRef(null);
+const [tabLayouts, setTabLayouts] = useState({});
+const tabScrollRef = useRef(null);
   useEffect(() => {
-    if (!userData) {
-      dispatch(fetchUser());
-    }
+    if (!userData) dispatch(fetchUser());
   }, [dispatch]);
 
-  // 🔹 Ensure company users cannot switch to other tabs
   useEffect(() => {
     if (userData?.userType === "company" && activeTab !== "About") {
       setActiveTab("About");
     }
   }, [userData]);
+useEffect(() => {
+  const layout = tabLayouts[activeTab];
 
+  if (layout && tabScrollRef.current) {
+    tabScrollRef.current.scrollTo({
+      x: layout.x - 40, // offset so it's not stuck to edge
+      animated: true,
+    });
+  }
+}, [activeTab]);
   if (loading || !userData) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -54,328 +60,308 @@ const ProfilePage = ({  }) => {
     );
   }
 
-  // Define tabs dynamically
-  const TABS =
-    userData?.userType === "company"
-      ? ["About"]
-      : ["Posts","Certificates", "Experience", "Education"];
+  const TABS = userData?.userType === "company" 
+    ? ["About"] 
+    : ["Posts", "Experience", "Education", "Certificates"];
 
-  const experiences = (userData.experiences || []).map((e) => ({
-    ...e,
-    type: "experience",
-  }));
-  const education = (userData.education || []).map((e) => ({
-    ...e,
-    type: "education",
-  }));
-
-  const sortedExperiences = experiences.sort(
-    (a, b) =>
-      new Date(b.to === "Present" ? Date.now() : b.to) -
-      new Date(a.to === "Present" ? Date.now() : a.to)
+  const experiences = (userData.experiences || []).map(e => ({ ...e, type: "experience" }));
+  const education = (userData.education || []).map(e => ({ ...e, type: "education" }));
+  
+  const sortedExperiences = experiences.sort((a, b) => 
+    new Date(b.to === "Present" ? Date.now() : b.to) - new Date(a.to === "Present" ? Date.now() : a.to)
   );
+const handleSwipe = (event) => {
+  const { translationX, state } = event.nativeEvent;
 
-  const sortedEducation = education.sort(
-    (a, b) => new Date(b.to) - new Date(a.to)
-  );
+  if (state === State.END) {
+    const currentIndex = TABS.indexOf(activeTab);
 
+    if (translationX < -50 && currentIndex < TABS.length - 1) {
+      setActiveTab(TABS[currentIndex + 1]);
+    } else if (translationX > 50 && currentIndex > 0) {
+      setActiveTab(TABS[currentIndex - 1]);
+    }
+
+    // 🔥 force scroll reset immediately
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
+};  
+const data =
+  activeTab === "Experience"
+    ? userData.experiences
+    : activeTab === "Education"
+    ? userData.education
+    : userData.certifications;
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      edges={["bottom", "top"]}
-    >
-      {/* Header Bar */}
-      <View style={[styles.headerBar, { borderBottomColor: colors.surface }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={26} color={colors.text} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+      {/* Premium Header Bar */}
+      <View style={[styles.headerBar, { backgroundColor: colors.background }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <Icon name="chevron-back" size={28} color={colors.text} />
         </TouchableOpacity>
-
-       <View style={{flexDirection:'row'}}>
-      
-         
-          
-        <TouchableOpacity
-          onPress={() => {
-            userData?.userType === "company"
-              ? navigation.navigate("EditCompProfilePage")
-              : navigation.navigate("EditProfilePage");
-          }}
-          style={{marginRight:10}}
-        >
-          <Icon name="create-outline" size={30} color={colors.primary} />
-        </TouchableOpacity> 
-          <TouchableOpacity onPress={()=>{navigation.openDrawer()}} style={{marginRight:10}}>
-
-<MaterialDesignIcons name="more-vertical" size={30} color={colors.primary} />
-        </TouchableOpacity>
-       </View>
-
+        
+        <View style={styles.headerRight}>
+          <TouchableOpacity 
+            onPress={() => userData?.userType === "company" ? navigation.navigate("EditCompProfilePage") : navigation.navigate("EditProfilePage")}
+            style={[styles.iconBtn, { marginRight: 12 }]}
+          >
+            <Icon name="pencil-sharp" size={22} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.openDrawer()} style={styles.iconBtn}>
+            <MaterialDesignIcons name="more-vertical" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Info */}
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <Image
-            source={{ uri: userData?.profilePic || DUMMY_PROFILE_PIC }}
-            style={styles.profilePic}
-          />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} >
+        {/* Profile Hero Section */}
+        <View style={styles.heroSection}>
+          <View style={[styles.imageContainer, { borderColor: colors.primary + '33' }]}>
+            <Image
+              source={{ uri: userData?.profilePic || DUMMY_PROFILE_PIC }}
+              style={styles.profilePic}
+            />
+          </View>
 
-          <Text allowFontScaling={false}  style={[styles.name, { color: colors.text }]}>
+          <Text allowFontScaling={false} style={[styles.name, { color: colors.text }]}>
             {userData.name}
           </Text>
-          <Text allowFontScaling={false}  style={[styles.username, { color: colors.textSecondary }]}>
+          <Text allowFontScaling={false} style={[styles.username, { color: colors.primary }]}>
             @{userData.username}
           </Text>
 
-          {userData.bio ? (
-            <Text allowFontScaling={false}  style={[styles.bio, { color: colors.text }]}>{userData.bio}</Text>
+          {userData.bio && (
+            <Text allowFontScaling={false} style={[styles.bio, { color: colors.textSecondary }]}>
+              {userData.bio}
+            </Text>
+          )}
+  
+               {userData.value ? (
+            <View style={[styles.rankBadge, { backgroundColor: colors.primary, shadowColor: colors.accent }]}>
+              <Text allowFontScaling={false} style={[styles.rankTxt,{color: colors.background}]}>{userData.value}</Text>
+            </View>
           ) : null}
-
-      
-                {userData.value && (
-                  <Text allowFontScaling={false}  style={[styles.dob, { color: colors.textSecondary,marginTop:10,fontSize:18,fontWeight:'800' }]}>
-                     {userData.value}
-                  </Text>
-                )}
-
           {userData.linkBtn && (
             <Button
-              mode="contained-tonal"
-              onPress={() =>
-                Linking.openURL(
-                  `https://linkedin.com/in/${userData.username || "dummy"}`
-                )
-              }
-              style={styles.linkBtn}
-              labelStyle={{ color: colors.primary }}
+              mode="contained"
+              onPress={() => Linking.openURL(`https://linkedin.com/in/${userData.username || "dummy"}`)}
+              style={[styles.linkBtn, { backgroundColor: colors.primary }]}
+              labelStyle={{ color: '#FFF', fontWeight: '700' }}
               icon="logo-linkedin"
             >
-              View LinkedIn
+              Professional Profile
             </Button>
           )}
         </View>
 
-        {/* Tabs */}
-        {userData?.userType=="company"?"":
-        <View style={styles.tabs}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tab,
-                activeTab === tab && {
-                  borderBottomColor: colors.primary,
-                },
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text allowFontScaling={false} 
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? colors.primary : colors.text },
-                ]}
-              >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-}
-        {/* Content */}
-        <View style={styles.content}>
-          {/* 🔹 Only show posts for non-company users */}
-          {userData?.userType !== "company" && activeTab === "Posts" && (
-            <UserPosts navigation={navigation} enableDelete />
-          )}
+        {/* Custom Premium Tabs */}
+        {userData?.userType !== "company" && (
+          <View style={[styles.tabsContainer, { backgroundColor: colors.surface + '50' }]}>
+          <ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  ref={tabScrollRef}
+>  
+              {TABS.map((tab) => (
+               <TouchableOpacity
+  key={tab}
+  onLayout={(e) => {
+    const { x, width } = e.nativeEvent.layout;
+    setTabLayouts((prev) => ({
+      ...prev,
+      [tab]: { x, width },
+    }));
+  }}
+  style={[
+    styles.tab,
+    activeTab === tab && { borderBottomColor: colors.primary },
+  ]}
+  onPress={() => setActiveTab(tab)}
+>
+                  <Text style={[styles.tabText, { color: activeTab === tab ? colors.primary : colors.textSecondary }]}>
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
-          {activeTab === "Experience" &&
-            sortedExperiences.map((exp, idx) => (
-              <View key={idx} style={styles.timelineItem}>
-                <View style={styles.timelineDot} />
-                <View
-                  style={[
-                    styles.timelineCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <Text allowFontScaling={false}  style={[styles.cardTitle, { color: colors.text }]}>
-                    {exp.title}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardOrg, { color: colors.textSecondary }]}
-                  >
-                    {exp.org}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardDate, { color: colors.textSecondary }]}
-                  >
-                    {exp.from} – {exp.to}
-                  </Text>
-                  <Text allowFontScaling={false}  style={[styles.cardDesc, { color: colors.text }]}>
-                    {exp.desc}
-                  </Text>
-                </View>
+        {/* Content Area */}
+      <PanGestureHandler
+  onHandlerStateChange={handleSwipe}
+  activeOffsetX={[-20, 20]}   // only trigger on horizontal movement
+  failOffsetY={[-10, 10]}     // fail if vertical movement happens
+>
+          <View style={styles.content}>
+            {activeTab === "Posts" && (
+              <UserPosts navigation={navigation} enableDelete />
+            )}
+        
+            {["Experience", "Education", "Certificates"].includes(activeTab) && (
+              <View style={styles.timelineContainer}>
+                {data && data.length > 0 ? (
+                  data.map((item, idx) => (
+                    <View key={idx} style={styles.timelineItem}>
+                      <View style={styles.timelineLeft}>
+                        <View
+                          style={[
+                            styles.timelineDot,
+                            { backgroundColor: colors.primary },
+                          ]}
+                        />
+                        <View
+                          style={[
+                            styles.timelineLine,
+                            { backgroundColor: colors.surface },
+                          ]}
+                        />
+                      </View>
+        
+                      <View
+                        style={[
+                          styles.timelineCard,
+                          { backgroundColor: colors.surface },
+                        ]}
+                      >
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>
+                          {item.title || item.degree || item.courseName}
+                        </Text>
+                        <Text style={[styles.cardOrg, { color: colors.primary }]}>
+                          {item.org || item.institution || item.issuePlace}
+                        </Text>
+                        <Text
+                          style={[styles.cardDate, { color: colors.textSecondary }]}
+                        >
+                          {item.from
+                            ? `${item.from} — ${item.to}`
+                            : item.issueDate}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  // 👇 EMPTY STATE
+                  <View style={styles.emptyContainer}>
+                    <Feather
+                      name="inbox"
+                      size={40}
+                      color={colors.textSecondary}
+                      style={{ marginBottom: 10 }}
+                    />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                      No {activeTab} added yet
+                    </Text>
+                  </View>
+                )}
               </View>
-            ))}
-
-          {activeTab === "Education" &&
-            sortedEducation.map((edu, idx) => (
-              <View key={idx} style={styles.timelineItem}>
-                <View style={styles.timelineDot} />
-                <View
-                  style={[
-                    styles.timelineCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <Text allowFontScaling={false}  style={[styles.cardTitle, { color: colors.text }]}>
-                    {edu.degree}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardOrg, { color: colors.textSecondary }]}
-                  >
-                    {edu.institution}
-                  </Text>
-                  <Text allowFontScaling={false} 
-                    style={[styles.cardDate, { color: colors.textSecondary }]}
-                  >
-                    {edu.from} – {edu.to}
-                  </Text>
-                </View>
-              </View>
-            ))}
-           {activeTab === "Certificates" &&
-  userData?.certifications?.length > 0 &&
-  userData.certifications.map((cert, idx) => (
-    <View key={idx} style={styles.timelineItem}>
-      <View style={styles.timelineDot} />
-
-      <View
-        style={[
-          styles.timelineCard,
-          { backgroundColor: colors.surface },
-        ]}
-      >
-        <Text
-          allowFontScaling={false}
-          style={[styles.cardTitle, { color: colors.text }]}
-        >
-          {cert.courseName}
-        </Text>
-
-        <Text
-          allowFontScaling={false}
-          style={[styles.cardOrg, { color: colors.textSecondary }]}
-        >
-          {cert.issuePlace}
-        </Text>
-
-        <Text
-          allowFontScaling={false}
-          style={[styles.cardDate, { color: colors.textSecondary }]}
-        >
-          Issued: {cert.issueDate}
-        </Text>
-
-        {cert.certificateNumber ? (
-          <Text
-            allowFontScaling={false}
-            style={[styles.cardMeta, { color: colors.textSecondary }]}
-          >
-            Certificate No: {cert.certificateNumber}
-          </Text>
-        ) : null}
-      </View>
-    </View>
-  ))}
-
-          {/* For company users — show simple info section */}
-          {userData?.userType === "company" && activeTab === "About" && (
-            <View style={{ padding: 16 }}>
-          
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        </PanGestureHandler>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 40 },
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 0.8,
+    height: 60,
   },
-  headerTitle: { fontSize: 20, fontWeight: "700" },
-  header: {
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  iconBtn: { padding: 4 },
+  heroSection: {
     alignItems: "center",
-    padding: 20,
-    borderRadius: 16,
-    margin: 12,
-    elevation: 2,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
   },
-  profilePic: { width: 120, height: 120, borderRadius: 60, marginBottom: 12 },
-  name: { fontSize: 22, fontWeight: "700" },
-  username: { fontSize: 15, marginBottom: 6 },
-  bio: {
-    fontSize: 14,
-    fontStyle: "italic",
-    textAlign: "center",
-    marginBottom: 6,
+  imageContainer: {
+    padding: 4,
+    borderWidth: 2,
+    borderRadius: 70,
+    marginBottom: 16,
   },
-  dob: { fontSize: 13, marginBottom: 8 },
-  linkBtn: { borderRadius: 30, marginTop: 10 },
-  tabs: {
-    width:'98%',
-    padding:10,
-    alignSelf:'center',
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-    alignItems:'center'
+  profilePic: { width: 110, height: 110, borderRadius: 55 },
+  name: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  username: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+  bio: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 20, paddingHorizontal: 20 },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    width: '100%',
+  },
+  statItem: { alignItems: 'center', paddingHorizontal: 25 },
+  statNumber: { fontSize: 18, fontWeight: '700' },
+  statLabel: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  statDivider: { width: 1, height: 30 },
+  linkBtn: { borderRadius: 12, width: '100%', elevation: 0 },
+  tabsContainer: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   tab: {
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-   
-    justifyContent:'center',
-    alignItems:'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
   },
-  tabText: { fontSize: 16, fontWeight: "600",
-    textAlign:'right'
-  
-
-   },
-  content: { paddingHorizontal: 12 },
-  timelineItem: { flexDirection: "row", marginBottom: 20 },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#0077b5",
-    marginRight: 12,
-    marginTop: 8,
-  },
+  tabText: { fontSize: 15, fontWeight: "700" },
+  content: { padding: 20 },
+  timelineContainer: { paddingLeft: 8 },
+  timelineItem: { flexDirection: "row", minHeight: 100 },
+  timelineLeft: { alignItems: 'center', marginRight: 16 },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, zIndex: 2 },
+  timelineLine: { width: 2, flex: 1, marginTop: -4 },
   timelineCard: {
     flex: 1,
-    padding: 14,
-    borderRadius: 14,
-    elevation: 2,
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 2 },
-  cardOrg: { fontSize: 14, fontWeight: "500", marginBottom: 2 },
-  cardDate: { fontSize: 13, marginBottom: 6 },
-  cardDesc: { fontSize: 14, lineHeight: 20 },
+  cardTitle: { fontSize: 17, fontWeight: "700", marginBottom: 4 },
+  cardOrg: { fontSize: 14, fontWeight: "600", marginBottom: 4 },
+  cardDate: { fontSize: 12, fontWeight: "500", marginBottom: 8 },
+  cardDesc: { fontSize: 14, lineHeight: 22, opacity: 0.8 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    dob: { fontSize: 13, marginBottom: 8 },
+ rankBadge: {
+  
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  rankTxt: {
+    fontSize: 13,
+    fontWeight: "600",
+  
+    letterSpacing: 1,
+  },
+  emptyContainer: {
+  alignItems: "center",
+  justifyContent: "center",
+  paddingVertical: 40,
+},
+emptyText: {
+  fontSize: 14,   
+  fontWeight: "500",
+},
 });
 
 export default ProfilePage;

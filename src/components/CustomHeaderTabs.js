@@ -6,15 +6,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Animated
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
 const TAB_LABELS = {
-  Post: "CREW Q&A",
+  Post: "Latest",
   News: "NEWS ROOM",
-  Trending: "HIGHLIGHT",
+  Trending: "Trending",
 };
 
 const CustomHeaderTabs = ({
@@ -22,20 +24,31 @@ const CustomHeaderTabs = ({
   activeTab,
   setActiveTab,
   colors,
+  headerAnim
 }) => {
   const tabWidth = width / tabs.length;
   const insets = useSafeAreaInsets();
-
+const radius = headerAnim
+  ? headerAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [30, 0],
+    })
+  : 30;
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-          paddingTop: insets.top > 0 ? 4 : 0,
-        },
-      ]}
-    >
+   <Animated.View
+  style={[
+    styles.container,
+    {
+      backgroundColor: colors.background,
+      paddingTop: insets.top > 0 ? 4 : 0,
+      borderTopLeftRadius: radius, 
+      borderTopRightRadius: radius,
+      justifyContent: "center",
+      overflow: "hidden",
+      alignSelf:'center'
+    },
+  ]}
+>
       {tabs.map((tab) => {
         const isActive = activeTab === tab;
 
@@ -56,6 +69,7 @@ const CustomHeaderTabs = ({
       borderWidth: isActive ? 1 : 0,
       borderColor: isActive ? colors.primary : "transparent",
       borderRadius:isActive ? 10 : 0,
+      width:tabWidth-10
     },
   ]}
 >
@@ -75,7 +89,7 @@ const CustomHeaderTabs = ({
           </TouchableOpacity>
         );
       })}
-    </View>
+    </Animated.View> 
   );
 };
 
@@ -103,7 +117,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "900",
     textAlign: "center",
     letterSpacing: 0.5,

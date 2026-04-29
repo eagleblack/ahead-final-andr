@@ -99,10 +99,7 @@ const HomeScreen = () => {
       ) : (
         <>
           <HomeScreenUser />
-          <BetaInfoModal
-            visible={showBetaModal}
-            onClose={() => setShowBetaModal(false)}
-          />
+         
         </>
       )}
     </>

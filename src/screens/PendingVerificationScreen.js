@@ -9,7 +9,7 @@ import {
   Alert,
   PermissionsAndroid,
 } from "react-native";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import auth from "@react-native-firebase/auth";
 import messaging from '@react-native-firebase/messaging';
@@ -51,7 +51,7 @@ const saveFcmToken = async (uid) => {
 }
 export default function PendingVerificationScreen({navigation}) {
   const { user: userData } = useSelector((state) => state.user);
-
+  const dispatch = useDispatch();
   useEffect(() => {
     const checkNotificationPermission = async () => {
       if (Platform.OS !== "android") return;
@@ -168,7 +168,7 @@ export default function PendingVerificationScreen({navigation}) {
 
   <TouchableOpacity
     style={[styles.logoutButton, { marginTop: 25 }]}
-    onPress={async () => await logoutUser()}
+    onPress={async () => await logoutUser(dispatch)}
     activeOpacity={0.7}
   >
     <Text style={styles.logoutText}>Logout</Text>

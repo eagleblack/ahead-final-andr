@@ -8,8 +8,7 @@ const JobScreen = () => {
 
 
   return (
-           <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-    
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
     <ThemeWrapper /> 
     </SafeAreaView>
   );

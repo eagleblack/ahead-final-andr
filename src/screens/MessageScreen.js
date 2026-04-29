@@ -39,10 +39,13 @@ const MessageScreen = () => {
   const route = useRoute();
   const dispatch = useDispatch();
 
-  const { otherUserId, otherUserName = "Ahead User", otherUserAvatar = DUMMY_PROFILE_PIC } = route.params || {};
+  const { otherUserId, otherUserName = "Ahead User", otherUserAvatar = DUMMY_PROFILE_PIC,jobId } = route.params || {};
   const currentUserId = auth().currentUser?.uid;
-  const chatId = route.params?.chatId??getChatId(currentUserId, otherUserId);
 
+  const chatId = jobId
+  ? getChatId(otherUserId, jobId)
+  : route.params?.chatId ?? getChatId(currentUserId, otherUserId);
+  
   const { user: userData } = useSelector((state) => state.user);
   const chat = useSelector((state) => state.chat.chats[chatId]);
   const messages = chat?.messages || [];
@@ -59,6 +62,7 @@ const MessageScreen = () => {
 
   // 🔹 Initialize chat
 useEffect(() => {
+
   let unsubMessages, unsubStatus;
 
   const init = async () => {
@@ -118,7 +122,7 @@ useEffect(() => {
     // dispatch(addNewMessage({ chatId, message: optimisticMessage }));
 
     if (!chatStatus) {
-      await startChat(currentUserId, otherUserId, text,senderUsername);
+      await startChat(currentUserId, otherUserId, text,senderUsername,jobId);
     } else {
       await sendMessage(chatId, currentUserId, otherUserId, text,senderUsername);
     }

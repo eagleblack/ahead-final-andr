@@ -30,7 +30,7 @@ const JobAccessScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [calendarVisible, setCalendarVisible] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState({ type: null, index: null });
-
+const [searchQuery, setSearchQuery] = useState("");
   const getCompanyName = () => userData?.name || "Unknown Company";
 
   const normalizeJob = (job) => ({
@@ -239,55 +239,89 @@ const [deadline, setDeadline] = useState(null);
 
       {/* Modal for FlatList options */}
       <Modal
-        visible={activeDropdown.type === field && activeDropdown.index === index}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setActiveDropdown({ type: null, index: null })}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{label}</Text>
-            <FlatList
-              data={options}
-              keyExtractor={(item, idx) => idx.toString()}
-              renderItem={({ item }) => {
-                const isSelected = item === value;
-                return (
-                  <TouchableOpacity
-                    style={[
-                      styles.optionItem,
-                      isSelected && {
-                        backgroundColor: colors.primary + "15",
-                        borderLeftWidth: 4,
-                        borderLeftColor: colors.primary,
-                      },
-                    ]}
-                    onPress={() => {
-                      handleJobChange(index, field, item);
-                      setActiveDropdown({ type: null, index: null });
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: colors.text,
-                        fontWeight: isSelected ? "600" : "400",
-                      }}
-                    >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-            />
+  visible={activeDropdown.type === field && activeDropdown.index === index}
+  transparent
+  animationType="fade"
+  onRequestClose={() => {
+    setActiveDropdown({ type: null, index: null });
+    setSearchQuery(""); // reset search
+  }}
+>
+  <View style={styles.modalOverlay}>
+    <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
+      
+      <Text style={[styles.modalTitle, { color: colors.text }]}>
+        {label}
+      </Text>
+
+      {/* 🔍 SEARCH BAR */}
+      <TextInput
+        placeholder={`Search ${label}`}
+        value={searchQuery}
+        onChangeText={setSearchQuery} 
+        style={{
+          marginBottom: 10,
+          backgroundColor: colors.background,
+        }}
+        mode="outlined"
+        theme={inputTheme}
+      />
+
+      {/* 📃 FILTERED LIST */}
+      <FlatList
+        data={options.filter((item) =>
+          item.toLowerCase().includes(searchQuery.toLowerCase())
+        )}
+        keyExtractor={(item, idx) => idx.toString()}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const isSelected = item === value;
+          return (
             <TouchableOpacity
-              style={[styles.closeButton, { backgroundColor: colors.primary }]}
-              onPress={() => setActiveDropdown({ type: null, index: null })}
+              style={[
+                styles.optionItem,
+                isSelected && {
+                  backgroundColor: colors.primary + "15",
+                  borderLeftWidth: 4,
+                  borderLeftColor: colors.primary,
+                },
+              ]}
+              onPress={() => {
+                handleJobChange(index, field, item);
+                setActiveDropdown({ type: null, index: null });
+                setSearchQuery(""); // reset after select
+              }}
             >
-              <Text style={{ color: "white", fontWeight: "600" }}>Close</Text>
+              <Text
+                style={{
+                  color: colors.text,
+                  fontWeight: isSelected ? "600" : "400",
+                }}
+              >
+                {item}
+              </Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+          );
+        }}
+        ListEmptyComponent={() => (
+          <Text style={{ textAlign: "center", marginTop: 20, color: colors.text }}>
+            No results found
+          </Text>
+        )}
+      />
+
+      <TouchableOpacity
+        style={[styles.closeButton, { backgroundColor: colors.primary }]}
+        onPress={() => {
+          setActiveDropdown({ type: null, index: null });
+          setSearchQuery("");
+        }}
+      >
+        <Text style={{ color: "white", fontWeight: "600" }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
     </>
   );
 };

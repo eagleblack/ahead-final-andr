@@ -293,8 +293,40 @@ const handleSave = async () => {
           <Text style={[styles.status, { color: colors.textSecondary }]}>
             Status: {item.status === "open" ? "Open" : "Closed"}
           </Text>
+          <View style={{flexDirection:'row'}}>
+   <View style={{flexDirection:'row',marginRight:20}}>
+          <Icon
+              name="visibility"
+
+            size={20}
+            color={colors.textSecondary}
+          />
+          <Text
+            allowFontScaling={false}
+            style={[styles.actionText, { color: colors.textSecondary }]}
+          >
+            {item?.viewCount || 0}
+          </Text>
+        </View>
+          <View style={{flexDirection:'row'}}>
+          <Icon
+            name="people"
+            size={20}
+            color={colors.textSecondary}
+          />
+          <Text
+            allowFontScaling={false}
+            style={[styles.actionText, { color: colors.textSecondary }]}
+          >
+            {item?.totalApplicants || 0}
+          </Text>
+        </View>
+          </View>
+
         </Card.Content>
+          
       </Card>
+    
     </TouchableOpacity>
   );
 
@@ -631,6 +663,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 6,
   },
+  /* ACTION BAR */
+actionRow: {
+flexDirection: "row",
+alignItems: "center",
+marginTop: 12,
+},
+actionItem: {
+flexDirection: "row",
+alignItems: "center",
+marginRight: 20,
+},
+actionText: {
+fontSize: 13,
+marginLeft: 6,
+},
 });
 
 export default HomeScreenComp;

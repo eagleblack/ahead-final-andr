@@ -1,6 +1,6 @@
 // userSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import firestore from "@react-native-firebase/firestore";
+import firestore, { FieldValue } from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
 
 const initialState = {
@@ -9,7 +9,55 @@ const initialState = {
   error: null,
   unsubscribe: null, // 👈 keep track of snapshot listener for cleanup
 };
+export const blockUser = createAsyncThunk(
+  "feed/blockUser",
+  async ({ blockedUserId }, { rejectWithValue }) => {
+    try {
+      const user = auth().currentUser;
+      if (!user) throw new Error("User not authenticated");
 
+      const myId = user.uid;
+
+      const blockRef = firestore()
+        .collection("users")
+        .doc(myId)
+        .collection("blockedUsers")
+        .doc(blockedUserId);
+
+      const blockedByRef = firestore()
+        .collection("users")
+        .doc(blockedUserId)
+        .collection("blockedBy")
+        .doc(myId);
+
+      const blockDoc = await blockRef.get();
+
+      if (blockDoc.exists()) {
+        return { blockedUserId, alreadyBlocked: true };
+      }
+
+      // 🔥 batch write (IMPORTANT)
+      const batch = firestore().batch();
+
+      batch.set(blockRef, {
+        blockedUserId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      batch.set(blockedByRef, {
+        blockedByUserId: myId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+
+      return { blockedUserId };
+    } catch (err) {
+      console.error("blockUser error:", err);
+      return rejectWithValue(err.message || "Failed to block user");
+    }
+  }
+);
 // ✅ One-time fetch user data
 export const fetchUser = createAsyncThunk(
   "user/fetchUser",

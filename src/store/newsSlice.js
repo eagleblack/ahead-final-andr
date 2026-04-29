@@ -38,7 +38,7 @@ export const fetchInitialNews = createAsyncThunk(
             resolve({ newsData, lastVisible, unsubscribe });
           },
           (error) => reject(error)
-        );
+        );  
       });
     } catch (err) {
       return rejectWithValue(err.message);
@@ -83,9 +83,9 @@ export const refreshNews = createAsyncThunk(
   "news/refreshNews",
   async (_, { rejectWithValue }) => {
     try {
-      const q = firestore()
-        .collection("news")
-        .orderBy("addedOn", "desc")
+      const q = firestore()  
+        .collection("news_api")
+        .orderBy("createdAt", "desc")
         .limit(50);
 
       const snapshot = await q.get();

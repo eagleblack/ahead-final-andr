@@ -15,6 +15,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useNavigation } from "@react-navigation/native";
 import { logoutUser } from "../store/store";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch } from "react-redux";
 
 const settingsItems = [
   { label: "Feedback & Support", icon: "message-question-outline", type: "navigate", route: "Support" },
@@ -23,13 +24,13 @@ const settingsItems = [
     label: "Privacy Policy",
     icon: "lock-outline",
     type: "link",
-    url: "https://ahead-9fb4c.web.app/#privacy-policy",
+    url: "https://ahead-9fb4c.web.app/privacy-policy",
   },
   {
     label: "Terms of Service",
     icon: "file-document-outline",
     type: "link",
-    url: "https://ahead-9fb4c.web.app/#terms-of-service",
+    url: "https://ahead-9fb4c.web.app/terms-of-service",
   },
   { label: "About Ahead", icon: "information-outline", type: "navigate", route: "About" },
   {
@@ -44,7 +45,7 @@ const settingsItems = [
 const SettingsScreen = () => {
   const { colors,setTheme } = useTheme();
   const navigation = useNavigation();
-
+ const dispatch=useDispatch();
   const handlePress = async (item) => {
     switch (item.type) {
       case "navigate":
@@ -66,7 +67,7 @@ const SettingsScreen = () => {
               style: "destructive",
               onPress: async () => {
                 setTheme('light')
-                await logoutUser();
+                await logoutUser(dispatch);
                
               },
             },

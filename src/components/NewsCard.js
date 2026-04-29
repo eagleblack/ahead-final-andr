@@ -31,8 +31,10 @@ const NewsCard = ({ item, colors }) => {
       : item?.addedOn;
 
   const openSource = () => {
-    if (item?.url) {
-      Linking.openURL(item.url);
+   
+    
+    if (item?.url || item.source) {
+      Linking.openURL(item.url ?? item.source);
     }
   };
 
@@ -72,12 +74,13 @@ const NewsCard = ({ item, colors }) => {
         </Text>
           {item?.source ? (
           <TouchableOpacity style={styles.sourceBadge} onPress={openSource}>
-                <Icon
-                              name={ "link"}
-                              size={24}
-                              color={colors.primary}
-                            />
-            <Text allowFontScaling={false}  style={[styles.sourceText,{color:colors.primary,opacity:0.8}]}>{item.source}</Text>
+<Icon
+  name={"link"}
+  size={24}
+  color={colors.primary}
+  style={{ transform: [{ rotate: "135deg" }] }}
+/>
+            <Text allowFontScaling={false}  style={[styles.sourceText,{color:colors.primary,opacity:0.8}]}> Source</Text>
           </TouchableOpacity>
         ) : null}
       </View>

@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAppliedJobs, resetAppliedJobs } from "../store/appliedJobSlice";
 import { useTheme } from "../context/ThemeContext";
 import JobCardApplied from "../components/JobCardApplied";
-import Icon from "@react-native-vector-icons/material-icons";
+import Icon from "react-native-vector-icons/MaterialIcons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 
@@ -56,7 +56,7 @@ const renderJob = ({ item }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                   <Icon name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
+                <Text allowFontScaling={false}  style={[styles.headerTitle, { color: colors.text }]}>
                   Applied Jobs
                 </Text>
                 <View style={{ width: 40 }} />
@@ -86,7 +86,7 @@ const renderJob = ({ item }) => {
         ListEmptyComponent={
           !loading && (
             <View style={{ alignItems: "center", marginTop: 50 }}>
-              <Text style={{ color: colors.text }}>No applied jobs yet</Text>
+              <Text allowFontScaling={false}  style={{ color: colors.text }}>No applied jobs yet</Text>
             </View>
           )
         }

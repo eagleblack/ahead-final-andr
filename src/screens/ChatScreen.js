@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   FlatList,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Dimensions,
+  Animated,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,15 +19,22 @@ import {
 } from "../store/chatListSlice";
 import auth from "@react-native-firebase/auth";
 
-const ChatScreen = ({ navigation }) => {   
+import { TabView, SceneMap, TabBar } from "react-native-tab-view";
+import { timeAgo } from "../utils/time";
+
+const initialLayout = { width: Dimensions.get("window").width };
+
+const ChatScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const dispatch = useDispatch();
   const { chats, loading } = useSelector((state) => state.chatList);
 
-  const [activeTab, setActiveTab] = useState("Inbox");
   const currentUserId = auth().currentUser?.uid;
 
-  // ✅ Setup real-time listener
+  const [index, setIndex] = useState(0);
+
+
+  // 🔁 realtime listener
   useEffect(() => {
     if (!currentUserId) return;
     dispatch(clearChatList());
@@ -33,14 +42,42 @@ const ChatScreen = ({ navigation }) => {
     return () => unsubscribe();
   }, [dispatch, currentUserId]);
 
-  // ✅ Split chats
-  const inboxChats = chats.filter((chat) => chat.status !== "REQUESTED");
-  const requestChats = chats.filter((chat) => chat.status === "REQUESTED");
-  const data = activeTab === "Inbox" ? inboxChats : requestChats;
+  const professionalChats = chats.filter(
+  (chat) => chat.jobId && chat.status !== "REQUESTED"
+);
+
+const inboxChats = chats.filter(
+  (chat) => !chat.jobId && chat.status !== "REQUESTED"
+);
+
+const requestChats = chats.filter(
+  (chat) => chat.status === "REQUESTED"
+);
+
+// ✅ Unread counts
+const professionalUnread = professionalChats.filter(
+  (chat) =>
+    chat.lastMessage?.from !== currentUserId &&
+    chat.lastMessage?.status === "UNREAD"
+).length;
+
+
+const requestUnread = requestChats.filter(
+  (chat) =>
+    chat.lastMessage?.from !== currentUserId &&
+    chat.lastMessage?.status === "UNREAD"
+).length;
+
+// ✅ FIXED: dynamic routes
+const routes = useMemo(() => [
+  { key: "inbox", title: "Inbox", count: 0 },
+  { key: "professional", title: "Professional", count: professionalUnread },
+  { key: "requests", title: "Requests", count: requestUnread },
+], [professionalUnread, requestUnread]);
 
   const requestCount = requestChats.length;
-
-  // ✅ Render each chat row
+const tabKey = `${professionalUnread}-${requestUnread}`;
+  // 🔹 Shared render
   const renderItem = ({ item }) => {
     const lastMsg =
       typeof item.lastMessage === "string"
@@ -49,27 +86,19 @@ const ChatScreen = ({ navigation }) => {
 
     const user = item.user || {};
 
-    // 🔹 Highlight logic for unread
     const isUnread =
       item.lastMessage?.from !== currentUserId &&
       item.lastMessage?.status === "UNREAD";
 
     return (
       <TouchableOpacity
-        style={[
-          styles.chatCard,
-          {
-            backgroundColor: isUnread
-              ? colors.surface 
-              : colors.surface,
-          },
-        ]}
+        style={[styles.chatCard,{backgroundColor:colors.surface,borderRightWidth:1,width:'96%',}]}
         onPress={() =>
           navigation.getParent()?.navigate("Message", {
             otherUserId: user.uid,
             otherUserName: user.name,
             otherUserAvatar: user.avatar,
-            chatId:item.chatId
+            chatId: item.chatId,
           })
         }
       >
@@ -99,17 +128,15 @@ const ChatScreen = ({ navigation }) => {
               styles.lastMessage,
               {
                 color: isUnread ? colors.text : colors.textSecondary,
-                fontWeight: isUnread ? "600" : "400",
               },
             ]}
             numberOfLines={1}
           >
             {lastMsg}
           </Text>
-        </View>
 
-        {/* Timestamp or unread indicator */}
-        <View style={{ alignItems: "flex-end" }}>
+        </View>
+         <View style={{ alignItems: "flex-end" }}>
           {item.updatedAt && (
             <Text
               style={[
@@ -122,7 +149,7 @@ const ChatScreen = ({ navigation }) => {
                 },
               ]}
             >
-              {new Date(item.updatedAt.toDate()).toLocaleDateString()}
+             {timeAgo( item?.updatedAt)}
             </Text>
           )}
 
@@ -133,94 +160,120 @@ const ChatScreen = ({ navigation }) => {
     );
   };
 
+  const renderList = (data) => (
+    <FlatList
+      data={data}
+      keyExtractor={(item) => item.chatId}
+      renderItem={renderItem}
+      ListEmptyComponent={
+        <Text style={{ textAlign: "center", marginTop: 20,color:colors.primary }}>
+          No chats found
+        </Text>
+      }
+    />
+  );
+
+  // 🔹 Scenes
+  const InboxRoute = () => renderList(inboxChats);
+  const ProfessionalRoute = () => renderList(professionalChats);
+  const RequestRoute = () => renderList(requestChats);
+const renderScene = ({ route }) => {
+  switch (route.key) {
+    case "inbox":
+      return renderList(inboxChats);
+    case "professional":
+      return renderList(professionalChats);
+    case "requests":
+      return renderList(requestChats);
+    default:
+      return null;
+  }
+};
   return (
-    <SafeAreaView
-      style={[{ flex: 1, backgroundColor: colors.background }]}
-      edges={["bottom", "top"]}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      
       {/* Header */}
-      <View style={[styles.headerBar, { borderBottomColor: colors.surface }]}>
+      <View style={[styles.headerBar,{borderBottomColor:colors.surface}]}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={{ flexDirection: "row", alignItems: "center" }}
         >
           <Icon name="arrow-back" size={24} color={colors.text} />
-          <Text
-            style={[styles.headerTitle, { color: colors.text, marginLeft: 10 }]}
-          >
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
             Your Inbox
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <View
-        style={[styles.tabContainer, { borderBottomColor: colors.surface }]}
-      >
-        {["Inbox", "Requests"].map((tab) => {
-          const isActive = activeTab === tab;
-          const showBadge = tab === "Requests" && requestCount > 0;
+      {/* 🔥 Swipeable Tabs */}
+     <TabView
+  navigationState={{ index, routes }}
+  renderScene={renderScene}
+  onIndexChange={setIndex}
+  initialLayout={initialLayout}
+  style={{ padding: 10 }}
+  options={{
+    professional: {
+      badge: () =>
+        professionalUnread > 0 ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {professionalUnread}
+            </Text>
+          </View>
+        ) : null,
+    },
+    requests: {
+      badge: () =>
+        requestUnread > 0 ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {requestUnread}
+            </Text>
+          </View>
+        ) : null,
+    },
+  }}
+  renderTabBar={(props) => (
+    <View
+      style={{
+        backgroundColor: colors.background,
+        paddingTop: 8,
+        marginBottom: 10,
+      }}
+    >
+      <TabBar
+        {...props}
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 12,
+          elevation: 0,
+        }}
+        indicatorStyle={{
+          backgroundColor: colors.primary,
+          borderRadius: 12,
+        }}
+        activeColor={colors.primary}
+        inactiveColor={colors.textSecondary}
+        tabStyle={{
+          borderRadius: 12,
+        }}
 
-          return (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[
-                styles.tab,
-                isActive && {
-                  borderBottomColor: "#4B7BE5",
-                  borderBottomWidth: 3,
-                },
-              ]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text
-                  style={{
-                    color: isActive ? "#4B7BE5" : colors.textSecondary,
-                    fontWeight: isActive ? "700" : "500",
-                  }}
-                >
-                  {tab}
-                </Text>
-                {showBadge && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{requestCount}</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Chat List */}
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        {loading ? (
+        // ✅ CLEAN label only (NO badge here)
+        renderLabel={({ route, focused, color }) => (
           <Text
-            style={{ color: colors.text, textAlign: "center", marginTop: 20 }}
+            style={{
+              color,
+              fontWeight: focused ? "700" : "500",
+            }}
           >
-            Loading chats...
+            {route.title}
           </Text>
-        ) : (
-          <FlatList
-            data={data}
-            keyExtractor={(item) => item.chatId}
-            renderItem={renderItem}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            ListEmptyComponent={
-              <Text
-                style={{
-                  color: colors.textSecondary,
-                  textAlign: "center",
-                  marginTop: 20,
-                }}
-              >
-                No {activeTab.toLowerCase()} chats found
-              </Text>
-            }
-          />
         )}
-      </View>
+      />
+    </View>
+  )}
+/>
     </SafeAreaView>
   );
 };
@@ -236,14 +289,11 @@ const styles = StyleSheet.create({
   chatCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 12,
     borderRadius: 16,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+ 
+ 
   },
   avatar: {
     width: 40,
@@ -264,6 +314,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
+    marginRight:20
   },
   headerBar: {
     flexDirection: "row",
@@ -310,3 +361,4 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
 });
+  

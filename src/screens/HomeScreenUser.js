@@ -373,7 +373,7 @@ item.content?.length > 120 && !isExpanded
 ? item.content.slice(0, 120) + "..."
 : item.content;
  
-
+ 
 return (
 <View style={[styles.postContainer, { borderBottomColor: colors.textSecondary,borderBottomWidth:0.2 }]}>
 {/* HEADER ROW */}

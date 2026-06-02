@@ -1,9 +1,17 @@
 // navigation/TabNavigator.js
-import React from "react";
-import { View, Text, Platform } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, Platform, Image } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import Feather from "react-native-vector-icons/Feather";
+import AiLearnIcon from "../assets/ai-learn.png";
+import Feed from "../assets/feed.png";
+import News from "../assets/news.png";
+import Inbox from "../assets/inbox.png";
+import Anchor from "../assets/anchor.png";
+
+
+
 
 
 import { useTheme } from "../context/ThemeContext";
@@ -20,7 +28,6 @@ import ChatScreenCompany         from "../screens/ChatScreenCompany";
 import GroupScreen from "../screens/GroupScreen";
 import PostJobScreen from "../screens/PostJobScreen";
 import StudyScreen from "../screens/StudyScreen";
-import GroupChatScreen from "../screens/GroupChatScreen";
 import NewsScreen from "../screens/NewsScreen";
 
 import { Circle } from "react-native-svg";
@@ -32,15 +39,16 @@ const TabNavigator = () => {
   const { user: userData } = useSelector((state) => state.user);
   const unreadCount = useSelector((state) => state.chat.unreadCount || 0);
   const insets = useSafeAreaInsets();
-
+    
   // 🔵 ICON MAP
   const icons = {
-    Post: "home",
+    Feed: "home",
     News: "newspaper",
     Career: "anchor",
     Message: "envelope",
     Circle: "users",
     Home: "home",
+    Job: "plus",
   };
 
   const screenOptions = ({ route }) => ({
@@ -48,15 +56,131 @@ const TabNavigator = () => {
 
     tabBarIcon: ({ focused }) => {
       const color = focused ? colors.primary : colors.textSecondary;
-  if (route.name === "Post") {
-    return (
-      <Feather
-        name="home"
-        size={22}
-        color={color}
+ if (route.name === "Feed") {
+  return (
+   <Image
+        source={Feed}
+        style={{
+          width: 26,
+          height: 26,
+          resizeMode: "contain",
+          tintColor: color, // remove if image already colored
+        }}
       />
-    );
-  }
+  );
+}
+ if (route.name === "News") {
+  return (
+   <Image
+        source={News}
+        style={{
+          width: 26,
+          height: 26,
+          resizeMode: "contain",
+          tintColor: color, // remove if image already colored
+        }}
+      />
+  );
+}
+if (route.name === "Message") {
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center" }}>
+      <Image
+        source={Inbox}
+        style={{
+          width: 26,
+          height: 26,
+          resizeMode: "contain",
+          tintColor: color,
+        }}
+      />
+
+      {unreadCount > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4,
+            right: -10,
+            backgroundColor: "red",
+            borderRadius: 10,
+            minWidth: 18,
+            height: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 3,
+          }}
+        >
+          <Text
+            allowFontScaling={false}
+            style={{
+              color: "#fff",
+              fontSize: 10,
+              fontWeight: "700",
+            }}
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+ if (route.name === "Career") {
+  return (
+   <Image
+        source={Anchor}
+        style={{
+          width: 26,
+          height: 26,
+          resizeMode: "contain",
+          tintColor: color, // remove if image already colored
+        }}
+      />
+  );
+}
+if (route.name === "Ai Assist") {
+  return (
+    <View
+      style={{
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: colors.surface,
+        alignItems: "center",
+        justifyContent: "center",
+
+        // Floating effect
+        marginTop: -18,
+
+        // iOS shadow
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 6,
+        },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+
+        // Android shadow
+        elevation: 10,
+
+        // Optional subtle border
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+      }}
+    >
+      <Image
+        source={AiLearnIcon}
+        style={{
+          width: 26,
+          height: 26,
+          resizeMode: "contain",
+          tintColor: color, // remove if image already colored
+        }}
+      />
+    </View>
+  );
+}
       return (
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <FontAwesome5
@@ -95,14 +219,14 @@ const TabNavigator = () => {
           )}
         </View>
       );
-    },
+    }, 
 
     tabBarLabel: ({ focused }) => (
       <Text allowFontScaling={false} 
         style={{
           fontSize: 11,
           marginTop: 2,
-          fontWeight: focused ? "700" : "500",
+          fontWeight:"500",
           color: focused ? colors.primary : colors.textSecondary,
         }}
       >
@@ -118,7 +242,8 @@ const TabNavigator = () => {
       height: 65 + insets.bottom,
       paddingBottom: Platform.OS === "ios" ? insets.bottom : 0,
       backgroundColor: colors.surface,
-      borderRadius: 18,
+      borderTopRightRadius: 18,
+      borderTopLeftRadius: 18,
       borderTopWidth: 0,
       elevation: 6,
       shadowColor: "#000",
@@ -133,7 +258,7 @@ const TabNavigator = () => {
     return (
       <Tab.Navigator screenOptions={screenOptions}>
         <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Career" component={PostJobScreen} />
+        <Tab.Screen name="Job" component={PostJobScreen} />
         <Tab.Screen name="Message" component={ChatScreenCompany} />
       </Tab.Navigator>
     );
@@ -141,18 +266,24 @@ const TabNavigator = () => {
 
   // 🔵 NORMAL USER
   return (
-    <Tab.Navigator screenOptions={screenOptions}>  
+    <Tab.Navigator
+    initialRouteName="Ai Assist" 
+    screenOptions={screenOptions} 
+    >  
+      <Tab.Screen name="Feed" component={HomeScreen} />
+
       <Tab.Screen name="News" component={NewsScreen} />
 
-      <Tab.Screen name="Post" component={HomeScreen} />
+      <Tab.Screen name="Ai Assist" component={StudyScreen} />
 
-      <Tab.Screen
+
+   
+
+      <Tab.Screen name="Message" component={ChatScreen} />
+         <Tab.Screen
         name="Career"
         component={userData?.userType === "company" ? HireScreen : JobScreen}
       />
-
-      <Tab.Screen name="Message" component={ChatScreen} />
-      <Tab.Screen name="Circle" component={GroupScreen} />
     </Tab.Navigator>
   );
 };

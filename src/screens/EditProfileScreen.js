@@ -135,9 +135,9 @@ const addCertification = () => {
   ]);
 };
 
-const updateCertification = (index, field, value) => {
+const updateCertification = (i, field, value) => { 
    const updated = certifications.map((item, index) =>
-    index === i ? { ...item, [field]: val } : item
+    index === i ? { ...item, [field]: value } : item
   );
   setCertifications(updated);
 };

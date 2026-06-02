@@ -12,7 +12,7 @@ import {
   FlatList,
 } from "react-native";
 import Swiper from "react-native-deck-swiper";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "react-native-vector-icons/MaterialIcons";
 import { useTheme } from "../context/ThemeContext";
 import { useDispatch, useSelector } from "react-redux";
@@ -40,7 +40,7 @@ const { jobs, loading, hasMore } = useSelector((state) => state.jobs);
   const { jobOptions, studentOptions, filters, error: filterError,experts } = useSelector(
     (state) => state.selection
   );
-  
+  const insets = useSafeAreaInsets();
   const filtersArray=["All",...filters]
  const navigation=useNavigation()
   const [finished, setFinished] = useState(false);
@@ -66,6 +66,7 @@ const { jobs, loading, hasMore } = useSelector((state) => state.jobs);
 
   // 🔹 Load jobs and selection options
   useEffect(() => {
+    console.error(insets.top);
     //dispatch(resetJobs());
     dispatch(fetchJobs());
   }, [dispatch]);
@@ -119,6 +120,8 @@ const filteredJobs =
 if (filteredJobs.length === 0 && !loading) {
     return (
           <View style={{flex:1}}>
+            <View>
+
               <TouchableOpacity
   style={[
     styles.trackButton,
@@ -145,6 +148,8 @@ if (filteredJobs.length === 0 && !loading) {
       >
         <Ionicons name="filter-list" size={30} color={theme.primary} />
       </TouchableOpacity>
+            </View>
+
              <RadarScreen />
              
                 <Modal
@@ -206,19 +211,21 @@ if (filteredJobs.length === 0 && !loading) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: activeColors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.background }]}>
       {/* 🧭 Filter Icon */}
+      
             <TouchableOpacity
   style={[
     styles.trackButton,
     {
+      top: 10,
       backgroundColor: theme.card,
       borderColor: theme.primary,
-     
     },
+  
   ]}
   activeOpacity={0.85}
-  onPress={() => navigation.navigate("Applied")}
+  onPress={() => navigation.navigate("Applied")}  
 >
   <IconF name="briefcase" size={18} color={theme.primary} />
   <Text
@@ -256,7 +263,12 @@ if (filteredJobs.length === 0 && !loading) {
         NOPE
       </Animated.Text> 
 
-     <SafeAreaView style={{ flex: 1,marginTop:20 }}>
+    <View
+  style={{
+    flex: 1,
+    paddingTop:60-insets.top,
+  }}
+>
   <CardStack
     data={filteredJobs}
     style={{ flex: 1 }}   // 👈 important
@@ -272,7 +284,7 @@ if (filteredJobs.length === 0 && !loading) {
 }}
 viewJob={(jobId) => dispatch(viewJob(jobId))}
   />
-</SafeAreaView>
+</View>
       {/* 🧩 Filter Modal */}
       <Modal
         visible={filterModalVisible}
@@ -326,7 +338,7 @@ viewJob={(jobId) => dispatch(viewJob(jobId))}
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -379,7 +391,7 @@ const styles = StyleSheet.create({
   trackButton: {
   position: "absolute",
   top: 10,
-  right: 60,
+  left: 10,
   zIndex: 1000,
 
   flexDirection: "row",

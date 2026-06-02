@@ -11,9 +11,9 @@ const defaultChat = {
 
 const chatSlice = createSlice({
   name: "chat",
-  initialState: { chats: {
-  unreadCount: 0, // ✅ NEW
-  } },
+  initialState: { chats: { },
+ unreadCount: 0, // ✅ NEW 
+ },
 
   reducers: {
     setMessages: (state, action) => {

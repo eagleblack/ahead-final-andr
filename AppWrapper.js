@@ -13,6 +13,7 @@ import TabNavigator from "./src/navigation/TabNavigator";
 import CustomDrawer from "./src/navigation/CustomDrawer";
 import ExpertScreen from "./src/screens/ExpertScreen";
 
+
 import Loginpage from "./src/screens/Loginpage";
 import OTPVerificationPage from "./src/screens/OTPVerificationPage";
 import ProfessionSelectPage from "./src/screens/ProfessionSelectPage";
@@ -64,6 +65,7 @@ import { navigationRef, navigate } from "./src/utils/navigationService";
 import NotificationsScreen from "./src/screens/NotificationScreen";
 import PendingVerificationScreen from './src/screens/PendingVerificationScreen'
 import UpgradeRankPage from './src/screens/RankUpgrade'
+import GroupScreen from "./src/screens/GroupScreen";
 
 
 const Drawer = createDrawerNavigator();
@@ -166,6 +168,10 @@ const AppStack = ({ userData }) => {
       <Stack.Screen name="Candidates" component={CandidatesScreen} />
       <Stack.Screen name="RankUpgrade" component={UpgradeRankPage} />
       <Stack.Screen name="ExpertScreen" component={ExpertScreen} />
+      <Stack.Screen name="GroupScreen" component={GroupScreen} />
+
+  
+
 
 
     </Stack.Navigator>

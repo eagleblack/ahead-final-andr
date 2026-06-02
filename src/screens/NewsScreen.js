@@ -34,7 +34,7 @@ const BOTTOM_TAB_HEIGHT = 60;
 const PAGE_HEIGHT = SCREEN_HEIGHT - BOTTOM_TAB_HEIGHT;
 
 const HEADER_MAX = 50;
-const TABS_HEIGHT = 50;
+const TABS_HEIGHT = 30;
 
 
 const NewsScreen = () => {
@@ -56,9 +56,14 @@ const headerOpacity = headerAnim.interpolate({
 inputRange: [0, 1],
 outputRange: [1, 0],
 });
+const TOP_PADDING_WHEN_HIDDEN = 16;
+
 const contentTranslateY = headerAnim.interpolate({
   inputRange: [0, 1],
-  outputRange: [HEADER_MAX + TABS_HEIGHT-insets.top , 0],
+  outputRange: [
+    HEADER_MAX + TABS_HEIGHT - insets.top,
+    TOP_PADDING_WHEN_HIDDEN,
+  ],
 });
   const {
     news,
@@ -230,16 +235,17 @@ styles.headerContainer,
   scrollEventThrottle={16} // ⚠️ REQUIRED
 />
 </Animated.View>
-     <BetaInfoModal
-            visible={showBetaModal}  
-            onClose={() => setShowBetaModal(false)}
-          />
+  
     </SafeAreaView>
   );
 };
 
 export default NewsScreen;
-
+/*
+   <BetaInfoModal
+            visible={showBetaModal}  
+            onClose={() => setShowBetaModal(false)}
+          /> */
 const styles = StyleSheet.create({
     headerContainer: {
 position: "absolute",

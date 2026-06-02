@@ -18,6 +18,7 @@ import {
   listenToRequestedChats,
 } from "../store/chatListSlice";
 import auth from "@react-native-firebase/auth";
+import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import { timeAgo } from "../utils/time";
@@ -201,6 +202,12 @@ const renderScene = ({ route }) => {
           <Icon name="arrow-back" size={24} color={colors.text} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             Your Inbox
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{ flexDirection: "column", alignItems: "center" }} onPress={() => navigation.navigate("GroupScreen")}>
+          <FontAwesome5 name="users" size={20} color={colors.text} />
+<Text style={[{ color: colors.text,fontSize:14,fontWeight:'600' }]}>
+           Circle
           </Text>
         </TouchableOpacity>
       </View>

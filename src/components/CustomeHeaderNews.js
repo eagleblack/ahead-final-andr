@@ -63,64 +63,18 @@ const CustomHeaderNews = () => {
 
         {/* LEFT */}
         <View style={styles.left}>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("MainApp", { screen: "Profile" })
-            }
-          >
-            <Image
-              source={
-                user?.profilePic
-                  ? { uri: user.profilePic }
-                  : require("../assets/logomain.jpg")
-              }
-              style={[
-                styles.avatar,
-                { borderColor: colors.surface },
-              ]}
-            />
-          </TouchableOpacity>
+         
 
           <Text
             allowFontScaling={false}
             style={[styles.title, { color: colors.text }]}
           >
-            Ahead AI
+           News
           </Text>
         </View>
 
         {/* RIGHT */}
-        <View style={{flexDirection:'row'}}>
-           
-          <TouchableOpacity
-                  style={[
-                    styles.bellContainer,
-                    { backgroundColor:'white',marginRight:10 },
-                  ]}
-                  onPress={() => navigation.navigate("ExpertScreen")}
-                >
-                  <FIcon name="user-tie" size={20} color={colors.primary} />
-        
-                
-                </TouchableOpacity>
- <TouchableOpacity
-          style={[
-            styles.bellContainer,
-            { backgroundColor:'white' },
-          ]}
-          onPress={() => navigation.navigate("Notifications")}
-        >
-          <Feather name="bell" size={20} color={colors.primary} />
-
-          {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        </View>
+      
        
       </LinearGradient>
     </View>

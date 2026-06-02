@@ -13,6 +13,7 @@ import { Card } from "react-native-paper";
 import firestore,{FieldValue} from "@react-native-firebase/firestore";
 import { Calendar } from "react-native-calendars";
 import { useTheme } from "../context/ThemeContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const SERVICES_COL = "services";
 const AVAILABILITY_COL = "availability";
@@ -259,6 +260,7 @@ const BookServiceScreen = ({ navigation, route }) => {
 
   // -------------------- UI --------------------
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={{ paddingBottom: 80 }}
@@ -362,6 +364,7 @@ const BookServiceScreen = ({ navigation, route }) => {
 </Modal>
 
     </ScrollView>
+    </SafeAreaView>
   );
 };
 

@@ -168,7 +168,8 @@ export default function PendingVerificationScreen({navigation}) {
 
   <TouchableOpacity
     style={[styles.logoutButton, { marginTop: 25 }]}
-    onPress={async () => await logoutUser(dispatch)}
+    onPress={async () => await logoutUser(dispatch
+    )}
     activeOpacity={0.7}
   >
     <Text style={styles.logoutText}>Logout</Text>

@@ -21,6 +21,7 @@ import companyReducer from "./companySlice"; // 👈 import feed slice
 import followerReducer from "./followersSlice"; // 👈 import feed slice
 import appliedJobsReducer from "./appliedJobSlice"; // 👈 import feed slice
 import selectionReducer from "./selectionSlice"; // 👈 import feed slice
+import studyReducer from "./studySlice";
 import firestore ,{FieldValue,FieldPath}from "@react-native-firebase/firestore";
 
 
@@ -87,6 +88,7 @@ const appReducer = combineReducers({
   followers: followerReducer,
   appliedJobs: appliedJobsReducer,
   selection: selectionReducer,
+  study: studyReducer,
 });
 
 const rootReducer = (state, action) => {

@@ -1,89 +1,56 @@
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Card } from "react-native-paper";
-import Icon from "@react-native-vector-icons/material-icons";
-import { useTheme } from "../context/ThemeContext"; // assuming your ThemeContext file path
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+import { useTheme } from '../context/ThemeContext';
+
+// Import newly created study screens
+import StudyHomeScreen from './study/StudyHomeScreen';
+import StudySubjectsScreen from './study/StudySubjectsScreen';
+import StudyTopicsScreen from './study/StudyTopicsScreen';
+import StudyQuestionsScreen from './study/StudyQuestionsScreen';
+import StudyAnswerScreen from './study/StudyAnswerScreen';
+import StudyMcqScreen from './study/StudyMcqScreen';
+import StudyInterviewScreen from './study/StudyInterviewScreen';
+import StudyBookmarksScreen from './study/StudyBookmarksScreen';
+
+const Stack = createStackNavigator();
 
 const StudyScreen = () => {
-  const { colors } = useTheme(); // get current theme colors
-  const navigation=useNavigation()
+  const { colors } = useTheme();
+
   return (
-    <SafeAreaView style={[{ flex: 1, backgroundColor: colors.background }]} edges={['bottom','top']}>
-             {/* 🔹 Header with Back + Title + Edit */}
-             <View style={[styles.headerBar, { borderBottomColor: colors.surface }]}>
-               <TouchableOpacity onPress={() => navigation.goBack()} style={{flexDirection:'row',alignItems:'center'}}>
-                 <Icon name="arrow-back" size={24} color={colors.text} />
-                      <Text style={[styles.headerTitle, { color: colors.text,marginLeft:10 }]}>Mind Grow</Text>
-               </TouchableOpacity>
-       
-          
-       
-              
-             </View>
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Card style={[styles.card, { backgroundColor: colors.surface }]}>
-        <Card.Content style={styles.cardContent}>
-          <Icon name="book" size={64} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.text }]}>Learn</Text>
-          <Text style={[styles.message, { color: colors.textSecondary }]}>
-            Coming Soon! Exciting learning materials are on the way. Stay tuned!
-          </Text>
-        </Card.Content>
-      </Card>
-    </View>
-    
-        </SafeAreaView>
-   
+    <Stack.Navigator
+      initialRouteName="StudyHome"
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="StudyHome">
+        {(props) => <StudyHomeScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudySubjects">
+        {(props) => <StudySubjectsScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudyTopics">
+        {(props) => <StudyTopicsScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudyQuestions">
+        {(props) => <StudyQuestionsScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudyAnswer">
+        {(props) => <StudyAnswerScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudyMcq">
+        {(props) => <StudyMcqScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudyInterview">
+        {(props) => <StudyInterviewScreen {...props} colors={colors} />}
+      </Stack.Screen>
+      <Stack.Screen name="StudyBookmarks">
+        {(props) => <StudyBookmarksScreen {...props} colors={colors} />}
+      </Stack.Screen>
+    </Stack.Navigator>
   );
 };
 
 export default StudyScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-   
-    padding: 16,
-  },
-  card: {
-    width: "100%",
-    elevation: 4,
-    borderRadius: 16,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    alignItems: "center",
-  },
-  cardContent: {
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  message: {
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  headerBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  header: {
-    alignItems: "center",
-    padding: 20,
-    marginBottom: 10,
-  },
-});

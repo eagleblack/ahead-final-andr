@@ -16,6 +16,7 @@ import LinearGradient from "react-native-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { useSelector } from "react-redux";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import FIcon from "react-native-vector-icons/FontAwesome5";
 
 import { useTheme } from "../context/ThemeContext";
 //import HeaderParticles from "./HeaderParticles";
@@ -61,16 +62,32 @@ const CustomHeader = () => {
         
 
         {/* LEFT */}
-        <View style={styles.left}>
-        
-
-          <Text
-            allowFontScaling={false}
-            style={[styles.title, { color: colors.text }]}
-          >
-          Posts
-          </Text>
-        </View>
+         <View style={styles.left}>
+                 <TouchableOpacity
+                   onPress={() =>
+                     navigation.navigate("MainApp", { screen: "Profile" })
+                   }
+                 >
+                   <Image
+                     source={
+                       user?.profilePic
+                         ? { uri: user.profilePic }
+                         : require("../assets/logomain.jpg")
+                     }
+                     style={[ 
+                       styles.avatar,
+                       { borderColor: colors.surface },
+                     ]}
+                   />
+                 </TouchableOpacity>
+       
+                 <Text
+                   allowFontScaling={false}
+                   style={[styles.title, { color: colors.text }]}
+                 >
+                   Ahead AI
+                 </Text>
+               </View>
 
         {/* RIGHT */}
         <View style={{flexDirection:'row'}}>
@@ -85,7 +102,34 @@ const CustomHeader = () => {
 
         
         </TouchableOpacity>
+   <TouchableOpacity
+                   style={[
+                     styles.bellContainer,
+                     { backgroundColor:'white',marginRight:10 },
+                   ]}
+                   onPress={() => navigation.navigate("ExpertScreen")}
+                 >
+                   <FIcon name="user-tie" size={20} color={colors.primary} />
+         
+                 
+                 </TouchableOpacity>
+  <TouchableOpacity
+           style={[
+             styles.bellContainer,
+             { backgroundColor:'white' },
+           ]}
+           onPress={() => navigation.navigate("Notifications")}
+         >
+           <Feather name="bell" size={20} color={colors.primary} />
  
+           {unreadCount > 0 && (
+             <View style={styles.unreadBadge}>
+               <Text style={styles.unreadText}>
+                 {unreadCount > 9 ? "9+" : unreadCount}
+               </Text>
+             </View>
+           )}
+         </TouchableOpacity>
         </View>
        
       </LinearGradient>

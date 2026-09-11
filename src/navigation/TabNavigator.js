@@ -4,11 +4,11 @@ import { View, Text, Platform, Image } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 import Feather from "react-native-vector-icons/Feather";
-import AiLearnIcon from "../assets/ai-learn.png";
+import AiLearnIcon from "../assets/Ai.png";
 import Feed from "../assets/feed.png";
 import News from "../assets/news.png";
-import Inbox from "../assets/inbox.png";
-import Anchor from "../assets/anchor.png";
+import Inbox from "../assets/Message.png";
+import Career from "../assets/Career.png";
 
 
 
@@ -128,7 +128,7 @@ if (route.name === "Message") {
  if (route.name === "Career") {
   return (
    <Image
-        source={Anchor}
+        source={Career}
         style={{
           width: 26,
           height: 26,

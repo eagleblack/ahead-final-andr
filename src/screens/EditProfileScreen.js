@@ -26,6 +26,7 @@ import storage from "@react-native-firebase/storage";
 import { pick, types, isCancel } from "@react-native-documents/picker";
 import RNFS from "react-native-fs";
 import * as ImagePicker from "react-native-image-picker";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 // ---------------- Storage Permission ----------------
 async function requestStoragePermission() {
@@ -269,6 +270,8 @@ const uploadResume = async () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
       >
+            <View style={{ flex: 1, position: "relative" }}>
+
         <ScrollView
           contentContainerStyle={[styles.scrollContainer, { backgroundColor: colors.background }]}
           keyboardShouldPersistTaps="handled"
@@ -527,6 +530,13 @@ const uploadResume = async () => {
             Save Changes
           </Button>
         </ScrollView>
+        {userData?.isUserVerified === false &&
+          userData?.userType === "user" && (
+            <VerificationOverlay
+              onVerify={() => navigation.navigate("Verification")}
+            />
+          )}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

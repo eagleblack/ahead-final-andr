@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const themes = [
   { key: "light", label: "Light Theme" },
   { key: "dark", label: "Dark Theme" },
-  { key: "midnight", label: "Midnight Theme" },
+ // { key: "midnight", label: "Midnight Theme" },
 ];
 
 const ThemeScreen = () => {

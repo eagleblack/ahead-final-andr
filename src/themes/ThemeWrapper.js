@@ -134,7 +134,7 @@ if (filteredJobs.length === 0 && !loading) {
   activeOpacity={0.85}
   onPress={() => navigation.navigate("Applied")}
 >
-  <IconF name="briefcase" size={18} color={theme.primary} />
+  <IconF name="clock" size={18} color={theme.primary} />
   <Text
     allowFontScaling={false}
     style={[styles.trackButtonText, { color: theme.primary }]}
@@ -143,7 +143,7 @@ if (filteredJobs.length === 0 && !loading) {
   </Text>
 </TouchableOpacity>
               <TouchableOpacity
-        style={styles.filterIcon}
+        style={[styles.filterIcon,{  borderColor: theme.primary,borderRadius:'50%',borderWidth:1,padding:5}]}
         onPress={() => setFilterModalVisible(true)}
       >
         <Ionicons name="filter-list" size={30} color={theme.primary} />
@@ -227,7 +227,7 @@ if (filteredJobs.length === 0 && !loading) {
   activeOpacity={0.85}
   onPress={() => navigation.navigate("Applied")}  
 >
-  <IconF name="briefcase" size={18} color={theme.primary} />
+  <IconF name="clock" size={18} color={theme.primary} />
   <Text
     allowFontScaling={false}
     style={[styles.trackButtonText, { color: theme.primary }]}
@@ -236,7 +236,8 @@ if (filteredJobs.length === 0 && !loading) {
   </Text>
 </TouchableOpacity>
       <TouchableOpacity
-        style={styles.filterIcon}
+                style={[styles.filterIcon,{  borderColor: theme.primary,borderRadius:'50%',borderWidth:1,padding:5}]}
+
         onPress={() => setFilterModalVisible(true)}
       >
         <Ionicons name="filter-list" size={30} color={theme.primary} />

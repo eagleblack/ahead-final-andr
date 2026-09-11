@@ -14,10 +14,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { useDispatch, useSelector } from "react-redux";
 import { subscribeToGroups } from "../store/groupChatSlice";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const GroupScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const dispatch = useDispatch();
+const { user: userData } = useSelector((state) => state.user);
 
   const { joinedGroups } = useSelector((state) => state.groupChat);
 
@@ -101,7 +103,7 @@ const GroupScreen = ({ navigation }) => {
           <Icon name="add" size={28} color={colors.primary} />
         </TouchableOpacity>
       </View>
-
+<View style={{ flex: 1, position: "relative" }}>
       {/* List of Joined Groups */}
       <FlatList
         data={joinedGroups}
@@ -131,6 +133,13 @@ const GroupScreen = ({ navigation }) => {
           </View>
         }
       />
+       {userData?.isUserVerified === false &&
+          userData?.userType === "user" && (
+            <VerificationOverlay  
+              onVerify={() => navigation.navigate("Verification")}
+            />
+          )}
+      </View>
     </SafeAreaView>
   );
 };

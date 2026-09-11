@@ -4,7 +4,7 @@ import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const StudyBottomSheet = ({ visible, onClose, colors, onContinue, mode, communities = [], levels = [] }) => {
+const StudyBottomSheet = ({ visible, onClose, colors, onContinue, mode, communities = [], levels = [], stcwLevels = [], studyLevels = [] }) => {
   const [step, setStep] = useState(1); // 1 = Exam selection, 2 = Class selection
   const [selectedExam, setSelectedExam] = useState(null); // Will hold selected community object
 
@@ -130,11 +130,11 @@ const StudyBottomSheet = ({ visible, onClose, colors, onContinue, mode, communit
               )}
               <View>
                 <Text style={[styles.title, { color: colors.text }]}>
-                  {step === 1 ? 'Select Exam Type' : 'Select Class Type'}
+                  {mode === 'STCW' ? 'Select STCW Level' : mode === 'GUIDE' ? 'Select Study Level' : (step === 1 ? 'Select Exam Type' : 'Select Class Type')}
                 </Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   {step === 1 
-                    ? `Step 1 of 2 • ${mode} Mode` 
+                    ? `Step 1 of ${mode === 'STCW' || mode === 'GUIDE' ? '1' : '2'} • ${mode} Mode` 
                     : `Step 2 of 2 • Exam ${selectedExam?.name || ''} Selected`}
                 </Text>
               </View>
@@ -157,28 +157,86 @@ const StudyBottomSheet = ({ visible, onClose, colors, onContinue, mode, communit
               {/* Step 1 Page */}
               <View style={styles.carouselPage}>
                 <View style={styles.pillsContainer}>
-                  {communities.map((exam) => (
-                    <TouchableOpacity
-                      key={exam.id}
-                      activeOpacity={0.8}
-                      onPress={() => handleSelectExam(exam)}
-                      style={[
-                        styles.examCard,
-                        {
-                          backgroundColor: colors.primary + '06',
-                          borderColor: colors.primary + '20',
-                        },
-                      ]}
-                    >
-                      <View style={styles.examCardContent}>
-                        <View style={[styles.examBadge, { backgroundColor: colors.primary }]}>
-                          <Text style={styles.examBadgeText}>{exam.name ? exam.name[0] : ''}</Text>
+                  {mode === 'STCW' ? (
+                    stcwLevels.map((lvl) => (
+                      <TouchableOpacity
+                        key={lvl.id}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          handleClose();
+                          setTimeout(() => onContinue({ stcwLevel: lvl }), 250);
+                        }}
+                        style={[
+                          styles.classCard,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.textSecondary + '20',
+                          },
+                        ]}
+                      >
+                        <View style={styles.classCardContent}>
+                          <View style={[styles.classIconBg, { backgroundColor: colors.primary + '12' }]}>
+                            <FontAwesome5 name="graduation-cap" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={[styles.classCardText, { color: colors.text }]}>
+                            {lvl.name}
+                          </Text>
                         </View>
-                        <Text style={[styles.examText, { color: colors.text }]}>{exam.name} Examination</Text>
-                      </View>
-                      <FontAwesome5 name="chevron-right" size={12} color={colors.primary} />
-                    </TouchableOpacity>
-                  ))}
+                        <FontAwesome5 name="arrow-right" size={12} color={colors.primary} />
+                      </TouchableOpacity>
+                    ))
+                  ) : mode === 'GUIDE' ? (
+                    studyLevels.map((lvl) => (
+                      <TouchableOpacity
+                        key={lvl.id}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          handleClose();
+                          setTimeout(() => onContinue({ studyLevel: lvl }), 250);
+                        }}
+                        style={[
+                          styles.classCard,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.textSecondary + '20',
+                          },
+                        ]}
+                      >
+                        <View style={styles.classCardContent}>
+                          <View style={[styles.classIconBg, { backgroundColor: colors.primary + '12' }]}>
+                            <FontAwesome5 name="book" size={16} color={colors.primary} />
+                          </View>
+                          <Text style={[styles.classCardText, { color: colors.text }]}>
+                            {lvl.name}
+                          </Text>
+                        </View>
+                        <FontAwesome5 name="arrow-right" size={12} color={colors.primary} />
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    communities.map((exam) => (
+                      <TouchableOpacity
+                        key={exam.id}
+                        activeOpacity={0.8}
+                        onPress={() => handleSelectExam(exam)}
+                        style={[
+                          styles.examCard,
+                          {
+                            backgroundColor: colors.primary + '06',
+                            borderColor: colors.primary + '20',
+                          },
+                        ]}
+                      >
+                        <View style={styles.examCardContent}>
+                          <View style={[styles.examBadge, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.examBadgeText}>{exam.name ? exam.name[0] : ''}</Text>
+                          </View>
+                          <Text style={[styles.examText, { color: colors.text }]}>{exam.name} Examination</Text>
+                        </View>
+                        <FontAwesome5 name="chevron-right" size={12} color={colors.primary} />
+                      </TouchableOpacity>
+                    ))
+                  )}
                 </View>
               </View>
 

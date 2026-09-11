@@ -7,6 +7,7 @@ import BecomeExpertScreen from "../components/BecomeExpertScreen";
 import ExpertDashboardScreen from "../components/ExpertDashboardScreen";
 import { useSelector } from "react-redux";
 import { SafeAreaView } from "react-native-safe-area-context";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const ExpertonScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -39,11 +40,20 @@ const ExpertonScreen = ({ navigation }) => {
        
       </View>
 
-      {isVerified ? (
-        <ExpertDashboardScreen expert={expertData} />
-      ) : (
-        <BecomeExpertScreen onVerified={handleVerified} />
-      )}
+<View style={{ flex: 1, position: "relative" }}>
+  {isVerified ? (
+    <ExpertDashboardScreen expert={expertData} />
+  ) : (
+    <BecomeExpertScreen onVerified={handleVerified} />
+  )}
+
+  {userData?.isUserVerified === false &&
+    userData?.userType === "user" && (
+      <VerificationOverlay
+        onVerify={() => navigation.navigate("Verification")}
+      />
+    )}
+</View>
     </SafeAreaView>
   );
 };

@@ -149,7 +149,7 @@ export default function PendingVerificationScreen({navigation}) {
 
       <TouchableOpacity
         style={styles.logoutButton}
-        onPress={() => navigation.navigate("UserDetailsPage")}
+        onPress={() => navigation.navigate("UserDetailsApp")}
         activeOpacity={0.7}
       >
         <Text style={styles.logoutText}>Edit & Resubmit</Text>
@@ -165,15 +165,14 @@ export default function PendingVerificationScreen({navigation}) {
       </Text>
     </>
   )}
-
-  <TouchableOpacity
+ <TouchableOpacity
     style={[styles.logoutButton, { marginTop: 25 }]}
-    onPress={async () => await logoutUser(dispatch
-    )}
+    onPress={async () =>{ navigation.navigate("MainApp")}}
     activeOpacity={0.7}
   >
-    <Text style={styles.logoutText}>Logout</Text>
+    <Text style={styles.logoutText}>Go back</Text>
   </TouchableOpacity>
+ 
 </View>
 
     </View>

@@ -47,14 +47,6 @@ import AppliedJobsScreen from "./src/screens/AppliedJobsScreen";
 import AllGroupScreen from "./src/screens/AllGroupScreen";  
 import CandidatesScreen from "./src/screens/CandidatesScreen";  
 import ChooseMethodsScreen from "./src/screens/ChooseMethodsScreen";  
-
-
-
-
-
-
-
-
 import { clearUser, listenToUser } from "./src/store/userSlice";
 import { listenToUserPosts, setUserPosts } from "./src/store/userPostsSlice";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -67,7 +59,8 @@ import PendingVerificationScreen from './src/screens/PendingVerificationScreen'
 import UpgradeRankPage from './src/screens/RankUpgrade'
 import GroupScreen from "./src/screens/GroupScreen";
 
-
+import UserDetailsApp from "./src/screens/UserDetailsApp";
+import ProfessionSelectPageApp from "./src/screens/ProfessionSelectPageApp";
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 const { width: screenWidth } = Dimensions.get("window");
@@ -102,6 +95,7 @@ const AppStack = ({ userData }) => {
   const userType = userData?.userType;
   const isVerified = userData?.isUserVerified === true;
   const hasChecked = userData?.hasChecked === true;
+  const isSkippedVerification = userData?.isSkippedVerification;
 
   const isCompany = userType === "company";
   const isNormalUser = !isCompany;
@@ -124,18 +118,15 @@ const AppStack = ({ userData }) => {
       )}
 
       {/* 2️⃣ USER HAS COMPLETED ONBOARDING BUT NORMAL USER UNVERIFIED */}
-      {hasChecked && isNormalUser && !isVerified && (
-        <>
-        <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} />
-          <Stack.Screen name="UserDetailsPage" component={UserDetailsPage} />
-
-        </>
-      )}
+     
 
       {/* 3️⃣ IF VERIFIED USER OR COMPANY, LOAD MAIN APP */}
-      {(hasChecked && (isCompany || isVerified)) && (
-        <Stack.Screen name="MainApp" component={MainDrawer} />
-      )}
+     {hasChecked && (isSkippedVerification || isVerified || isCompany) && (
+  <Stack.Screen
+    name="MainApp"
+    component={MainDrawer}
+  />
+)}
 
       {/* Common Extra Screens */}
       <Stack.Screen name="AddPost" component={CreatePostScreen} />
@@ -169,10 +160,9 @@ const AppStack = ({ userData }) => {
       <Stack.Screen name="RankUpgrade" component={UpgradeRankPage} />
       <Stack.Screen name="ExpertScreen" component={ExpertScreen} />
       <Stack.Screen name="GroupScreen" component={GroupScreen} />
-
-  
-
-
+        <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} />
+          <Stack.Screen name="UserDetailsApp" component={UserDetailsApp} />
+          <Stack.Screen name="ProfessionSelectApp" component={ProfessionSelectPageApp} />
 
     </Stack.Navigator>
   );
@@ -260,3 +250,11 @@ useEffect(() => {
 };
 
 export default AppWrapper
+
+/* {hasChecked && isNormalUser && !isVerified && (
+        <>
+        <Stack.Screen name="PendingVerification" component={PendingVerificationScreen} />
+          <Stack.Screen name="UserDetailsPage" component={UserDetailsPage} />
+
+        </>
+      )} */

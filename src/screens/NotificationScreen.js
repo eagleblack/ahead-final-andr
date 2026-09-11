@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import Icon from "@react-native-vector-icons/material-icons";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const NotificationsScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -207,6 +208,8 @@ const NotificationsScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
       {/* Notification List */}
+      <View style={{ flex: 1, position: "relative" }}>
+
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
@@ -236,6 +239,14 @@ const NotificationsScreen = ({ navigation }) => {
           )
         }
       />
+      {userData?.isUserVerified === false &&
+    userData?.userType === "user" && (
+      <VerificationOverlay
+        onVerify={() => navigation.navigate("Verification")}
+      />
+    )}
+      </View>
+
     </SafeAreaView>
   );
 };

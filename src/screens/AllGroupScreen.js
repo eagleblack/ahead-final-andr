@@ -14,11 +14,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useTheme } from "../context/ThemeContext";
 import { joinGroup, subscribeToGroups } from "../store/groupChatSlice";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const AllGroupsScreen = ({navigation}) => {
   const { colors } = useTheme();
   const dispatch = useDispatch();
   const { discoverGroups } = useSelector((state) => state.groupChat);
+const { user: userData } = useSelector((state) => state.user);
 
   useEffect(() => {
     const subscribe = async () => {
@@ -78,7 +80,9 @@ const AllGroupsScreen = ({navigation}) => {
           Discover Groups
         </Text>
       </View>
-
+     <View style={{ flex: 1, position: "relative" }}>
+    
+     
       <FlatList
         data={discoverGroups}
         renderItem={renderGroup}
@@ -107,6 +111,13 @@ const AllGroupsScreen = ({navigation}) => {
           </View>
         }
       />
+        {userData?.isUserVerified === false &&
+          userData?.userType === "user" && (
+            <VerificationOverlay  
+              onVerify={() => navigation.navigate("Verification")}
+            />
+          )}
+      </View>
     </SafeAreaView>
   );
 };

@@ -13,6 +13,8 @@ import {
   ScrollView,
   Linking,
   KeyboardAvoidingView,
+  Modal,
+  FlatList,
 } from "react-native";
 import Icon from "@react-native-vector-icons/material-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,8 +27,20 @@ import storage from "@react-native-firebase/storage";
 import { launchImageLibrary } from "react-native-image-picker";
 import uuid from "react-native-uuid";
 import { useSelector } from "react-redux";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const AVATAR_URL = "https://i.pravatar.cc/150?img=12";
+
+export const POST_CATEGORIES = [
+  { id: "knowledge", label: "Share Knowledge", subtitle: "Share useful concepts, guides", icon: "menu-book", color: "#3B82F6" },
+  { id: "question", label: "Ask a Question", subtitle: "Get answers from experts", icon: "help-outline", color: "#8B5CF6" },
+  { id: "experience", label: "Share Experience", subtitle: "Real life experiences & lessons", icon: "directions-boat", color: "#F97316" },
+  { id: "tip", label: "Give a Tip", subtitle: "Quick tips that help others", icon: "lightbulb-outline", color: "#22C55E" },
+  { id: "safety", label: "Safety Alert", subtitle: "Share safety observations", icon: "warning-amber", color: "#EAB308" },
+  { id: "exam", label: "Exam Question", subtitle: "Post interview / exam questions", icon: "school", color: "#EC4899" },
+  { id: "news", label: "Industry News", subtitle: "Share marine news & updates", icon: "article", color: "#06B6D4" },
+  { id: "onboard", label: "Onboard Moment", subtitle: "Life at sea – moments & views", icon: "photo-camera", color: "#2563EB" },
+];
 
 export default function CreatePostScreen({ navigation }) {
   const { colors, isDark } = useTheme();
@@ -68,7 +82,8 @@ const [selection, setSelection] = useState({ start: 0, end: 0 });
     const updated = poll.options.filter((_, i) => i !== index);
     setPoll({ ...poll, options: updated });
   };
-
+  const [selectedCategory, setSelectedCategory] = useState(POST_CATEGORIES[0]);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const insertAtCursor = (insertText) => {
   const start = selection.start;
   const end = selection.end;
@@ -140,6 +155,7 @@ if (imageUri) {
       await firestore().collection("posts").add({
         userId: auth().currentUser.uid,
         content: text.trim(),
+        categoryName: selectedCategory ? selectedCategory.label : "General",
         imageUrl: imageUrl || null,
         links: detectedLinks,
            poll: pollData,
@@ -225,18 +241,25 @@ const getInitial = (name) => {
     ]}
   />
 </TouchableOpacity>
-        <View style={styles.nameBlock}>
-          <Text style={[styles.name, { color: colors.text }]}>
-           {userData?.name}
-          </Text>
-          <Text style={[styles.hint, { color: colors.textSecondary }]}>
-           {userData?.profileTitle}
-
-          </Text>
-        </View>
+         <View style={styles.nameBlock}>
+            <Text style={[styles.name, { color: colors.text }]}>{userData?.name}</Text>
+            
+            {/* Category Selector Badge */}
+            <TouchableOpacity
+              style={[styles.categoryBadge, { backgroundColor: selectedCategory.color + "18" }]}
+              onPress={() => setCategoryModalVisible(true)}
+            >
+              <Icon name={selectedCategory.icon} size={16} color={selectedCategory.color} />
+              <Text style={[styles.categoryBadgeText, { color: selectedCategory.color }]}>
+                {selectedCategory.label}
+              </Text>
+              <Icon name="arrow-drop-down" size={18} color={selectedCategory.color} />
+            </TouchableOpacity>
+          </View>
       </View>
 
      
+<View style={{ flex: 1, position: "relative" }}>
 
       {/* Composer */}
       <ScrollView
@@ -392,6 +415,13 @@ color={colors}
      
       
       </ScrollView>
+        {userData?.isUserVerified === false &&
+          userData?.userType === "user" && (
+            <VerificationOverlay  
+              onVerify={() => navigation.navigate("Verification")}
+            />
+          )}
+</View>
     
       {/* Bottom Action Bar */}
       <View style={styles.bottomBar}>
@@ -418,6 +448,58 @@ color={colors}
           )}
         </TouchableOpacity>
       </View>
+          <Modal
+          animationType="slide"
+          transparent={true}
+          visible={categoryModalVisible}
+          onRequestClose={() => setCategoryModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Select Category</Text>
+                <TouchableOpacity onPress={() => setCategoryModalVisible(false)}>
+                  <Icon name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={POST_CATEGORIES}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.categoryOption,
+                      selectedCategory.id === item.id && {
+                        backgroundColor: item.color + "12",
+                      },
+                    ]}
+                    onPress={() => {
+                      setSelectedCategory(item);
+                      setCategoryModalVisible(false);
+                    }}
+                  >
+                    <View style={[styles.categoryIconWrap, { backgroundColor: item.color }]}>
+                      <Icon name={item.icon} size={22} color="#FFF" />
+                    </View>
+                    <View style={styles.categoryTextWrap}>
+                      <Text style={[styles.categoryLabel, { color: colors.text }]}>
+                        {item.label}
+                      </Text>
+                      <Text style={[styles.categorySub, { color: colors.textSecondary }]}>
+                        {item.subtitle}
+                      </Text>
+                    </View>
+                    {selectedCategory.id === item.id && (
+                      <Icon name="check" size={22} color={item.color} />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -615,4 +697,68 @@ avatarFallback: {
   justifyContent: "center",
   alignItems: "center",
 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: "80%",
+  },
+  modalHeader: { 
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#CCC",
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  categoryOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginVertical: 4,
+  },
+  categoryIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 14,
+  },
+  categoryTextWrap: {
+    flex: 1,
+  },
+  categoryLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  categorySub: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+    categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+    gap: 4,
+  },
+  categoryBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });

@@ -11,16 +11,19 @@ export const lightColors = {
 
 
 export const darkColors = {
-  primary: "#90CAF9",      // soft sky blue
-  secondary: "#211d18ff",    // warm orange
-  background: "#050505ff",   // pure dark background
-  surface: "#0b0b0bff",      // card / panel contrast
-  text: "#E5E7EB",         // light gray text
-  textSecondary: "#9CA3AF",// muted gray
-  link: "#4EA8DE",         // neon-like link blue
+  primary: "#60A5FA",        // bright soft blue
+  secondary: "#A78BFA",      // subtle violet accent
+
+  background: "#080A0F",     // main app background
+  surface: "#11151D",        // cards / panels
+
+  text: "#F3F4F6",           // primary text
+  textSecondary: "#9CA3AF",  // muted text
+
+  link: "#60A5FA",            // links / interactive elements
 };
 
-
+/*
 export const midnightColors = {
   primary: "#FF3366",      // vibrant neon pink (for FAB, highlights)
   secondary: "#7C4DFF",    // purple accent
@@ -29,4 +32,4 @@ export const midnightColors = {
   text: "#F5F5F7",         // near-white text
   textSecondary: "#A0A3B1",// muted bluish-gray text
   link: "#3DBEFF",         // electric blue link
-};
+};*/

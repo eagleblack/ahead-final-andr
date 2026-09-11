@@ -463,7 +463,7 @@ const StudyAnswerScreen = ({
                 ) : (
                   
                   <RenderHtml
-                    contentWidth={width - 28}
+                    contentWidth={width - 64}
                     source={{
                       html: htmlContent,
                     }}
@@ -474,144 +474,87 @@ const StudyAnswerScreen = ({
                       allowFontScaling: false,
                     }}
                     baseStyle={{
-                      color: colors.text,
-                      fontSize:
-                        15.5 * fontScale,
-                      lineHeight:
-                        27 * fontScale,
-                      fontWeight: '400',
-                      includeFontPadding: false,
+  color: colors.text,
+  fontSize: 16 * fontScale,
+  lineHeight: 26 * fontScale,
+  fontWeight: '400',
+  textAlign: 'left',
+  includeFontPadding: false,
 
-                      ...Platform.select({
-                        android: {
-                          textBreakStrategy:
-                            'highQuality',
-                        },
-                      }),
-                    }}
-                    tagsStyles={{
-                      body: {
-                        margin: 0,
-                        padding: 0,
-                        color: colors.text,
-                      },
-
-                      p: {
-                        marginTop: 0,
-                        marginBottom: 12,
-                        lineHeight:
-                          27 * fontScale,
-                      },
-
-                      h1: {
-                        fontSize: 23,
-                        fontWeight: '700',
-                        lineHeight: 32,
-                        marginBottom: 12,
-                        color: colors.text,
-                      },
-
-                      h2: {
-                        fontSize: 20,
-                        fontWeight: '700',
-                        lineHeight: 28,
-                        marginTop: 14,
-                        marginBottom: 10,
-                        color: colors.text,
-                      },
-
-                      h3: {
-                        fontSize: 17,
-                        fontWeight: '600',
-                        lineHeight: 24,
-                        marginTop: 12,
-                        marginBottom: 8,
-                        color: colors.text,
-                      },
-
-                      ul: {
-                        marginTop: 8,
-                        marginBottom: 12,
-                        paddingLeft: 18,
-                      },
-
-                      ol: {
-                        marginTop: 8,
-                        marginBottom: 12,
-                        paddingLeft: 22,
-                      },
-
-                      li: {
-                        marginBottom: 6,
-                        lineHeight:
-                          26 * fontScale,
-                      },
-
-                      strong: {
-                        fontWeight: '700',
-                        color: colors.text,
-                      },
-
-                      blockquote: {
-                        borderLeftWidth: 3,
-                        borderLeftColor:
-                          colors.primary,
-                        paddingLeft: 12,
-                        marginVertical: 12,
-                      },
-
-                      code: {
-                        fontSize: 14,
-                        paddingHorizontal: 4,
-                        paddingVertical: 2,
-                        borderRadius: 4,
-                        backgroundColor:
-                          colors.background,
-                      },
-                        body: {
+  ...Platform.select({
+    android: {
+      textBreakStrategy: 'highQuality',
+    },
+  }),
+}}
+tagsStyles={{
+  body: {
     margin: 0,
     padding: 0,
     color: colors.text,
   },
 
-  table: {
-    borderWidth: 1,
-    borderColor: colors.textSecondary + '25',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginVertical: 14,
-    width: '100%',
+  p: {
+    marginTop: 0,
+    marginBottom: 12,
+    lineHeight: 22 * fontScale,
   },
 
-  thead: {
-    backgroundColor: colors.primary + '10',
-  },
-
-  tr: {
-    flexDirection: 'row',
-  },
-
-  th: {
-    flex: 1,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.textSecondary + '20',
+  h1: {
+    fontSize: 22 * fontScale,
     fontWeight: '700',
+    lineHeight: 30 * fontScale,
+    marginTop: 20,
+    marginBottom: 10,
     color: colors.text,
   },
 
-  td: {
-    flex: 1,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.textSecondary + '15',
+  h2: {
+    fontSize: 20 * fontScale,
+    fontWeight: '700',
+    lineHeight: 28 * fontScale,
+    marginTop: 20,
+    marginBottom: 10,
     color: colors.text,
   },
 
-  tbody: {},
+  h3: {
+    fontSize: 18 * fontScale,
+    fontWeight: '700',
+    lineHeight: 26 * fontScale,
+    marginTop: 18,
+    marginBottom: 8,
+    color: colors.text,
+  },
 
+  ul: {
+    marginTop: 4,
+    marginBottom: 10,
+    paddingLeft: 20,
+  },
 
-                    }}
+  ol: {
+    marginTop: 4,
+    marginBottom:10,
+    paddingLeft: 20,
+  },
+
+  li: {
+    marginBottom:2,
+    lineHeight: 22 * fontScale,
+  },
+
+  blockquote: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    paddingLeft: 12,
+    paddingVertical: 8,
+    paddingRight: 10,
+    marginVertical: 12,
+    backgroundColor: colors.primary + '08',
+    borderRadius: 6,
+  },
+}}
                     renderersProps={{
                       ol: {
                         enableExperimentalRtl:

@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import Dropdown from "../components/Dropdown";
  import {styles,inProgress} from '../styles/RankUpgrade'
 import RNFS from "react-native-fs";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 /* ─────────────────────────────────────────
    Status: request already in progress
@@ -202,7 +203,7 @@ const pickFile = async () => {
   /* ── Render ── */
   if (checkingStatus) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe}> 
         <View style={styles.centerLoader}>
           <ActivityIndicator size="large" color="#4F8EF7" />
         </View>
@@ -369,6 +370,12 @@ const pickFile = async () => {
               </Text>
             </>
           )}
+             {userData?.isUserVerified === false &&
+    userData?.userType === "user" && (
+      <VerificationOverlay
+        onVerify={() => navigation.navigate("Verification")}
+      />
+    )}
         </View>
       </ScrollView>
     </SafeAreaView>

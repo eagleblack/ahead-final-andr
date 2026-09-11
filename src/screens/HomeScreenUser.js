@@ -57,11 +57,12 @@ clearNews,
 } from "../store/newsSlice";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const BOTTOM_TAB_HEIGHT = 60;
 const PAGE_HEIGHT = SCREEN_HEIGHT - BOTTOM_TAB_HEIGHT;
-
+import { POST_CATEGORIES } from "./AddPost";
 const HEADER_MAX = 50;
 const TABS_HEIGHT = 50;
 
@@ -365,6 +366,7 @@ const handleReport = (post,data) => {
   dispatch(removePostOptimistic(post.id));
  dispatch(reportPost({ postId: post.id, reason: data?.reason })); 
 };
+
 const renderPost = useCallback(
 ({ item }) => {
 const isExpanded = expanded[item.id] || false;
@@ -373,7 +375,9 @@ item.content?.length > 120 && !isExpanded
 ? item.content.slice(0, 120) + "..."
 : item.content;
  
- 
+  const category = POST_CATEGORIES.find(
+  (cat) => cat.label === item.categoryName
+);
 return (
 <View style={[styles.postContainer, { borderBottomColor: colors.textSecondary,borderBottomWidth:0.2 }]}>
 {/* HEADER ROW */}
@@ -392,7 +396,33 @@ item?.user.uid === userData.uid
 <Text allowFontScaling={false}  style={[styles.timeAgo, { color: colors.textSecondary }]}>
 {timeAgo(item.createdAt)}
 </Text>
+{category && (
+  <View
+    style={[
+      styles.categoryBadge,
+      {
+        backgroundColor: category.color + "18",
+      },
+    ]}
+  >
+    <Icon
+      name={category.icon}
+      size={14}
+      color={category.color}
+    />
 
+    <Text
+      style={[
+        styles.categoryBadgeText,
+        {
+          color: category.color,
+        },
+      ]}
+    >
+      {category.label}
+    </Text>
+  </View>
+)}
 </View>
 
 
@@ -884,7 +914,12 @@ renderItem={renderPost}
 />
   )}
 </Animated.View>
-
+  {userData?.isUserVerified === false &&
+      userData?.userType === "user" && (
+        <VerificationOverlay
+          onVerify={() => navigation.navigate("Verification")}
+        />
+      )}
 </View>
 </PanGestureHandler>
 
@@ -1089,6 +1124,21 @@ shadowOpacity: 0.25,
 shadowRadius: 10,
 elevation: 6,
 
+},
+categoryBadge: {
+  flexDirection: "row",
+  alignItems: "center",
+  alignSelf: "flex-start",
+  paddingHorizontal: 8,
+  paddingVertical: 3,
+  borderRadius: 14,
+  marginTop: 4,
+  gap: 4,
+},
+
+categoryBadgeText: {
+  fontSize: 11,
+  fontWeight: "700",
 },
 
 fabText: {

@@ -28,6 +28,7 @@ import LinearGradient from "react-native-linear-gradient";
 import { fetchRecentPosts, fetchTrendingPosts } from "../store/feedSlice";
 import BetaInfoModal from "../components/BetaInfoModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const BOTTOM_TAB_HEIGHT = 60;
@@ -120,8 +121,8 @@ const [activeTab, setActiveTab] = useState("Post");
 useEffect(() => {
 dispatch(fetchInitialNews());
 
-dispatch(fetchRecentPosts());
-dispatch(fetchTrendingPosts());
+//dispatch(fetchRecentPosts());
+//dispatch(fetchTrendingPosts());
 return () => dispatch(clearNews());
 }, []);
 
@@ -235,7 +236,12 @@ styles.headerContainer,
   scrollEventThrottle={16} // ⚠️ REQUIRED
 />
 </Animated.View>
-  
+    {userData?.isUserVerified === false &&
+    userData?.userType === "user" && (
+      <VerificationOverlay
+        onVerify={() => navigation.navigate("Verification")}
+      />
+    )}
     </SafeAreaView>
   );
 };

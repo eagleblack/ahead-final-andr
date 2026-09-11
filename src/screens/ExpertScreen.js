@@ -15,6 +15,7 @@ import { useTheme } from "../context/ThemeContext";
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
 import { useSelector } from "react-redux";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const { width } = Dimensions.get("window");
 
@@ -22,6 +23,7 @@ const ExpertPage = ({ navigation }) => {
   const { colors } = useTheme();
   const [experts, setExperts] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const { user: userData, loading } = useSelector((state) => state.user);
 
   const scrollRef = useRef();
   const tabScrollRef = useRef();
@@ -182,6 +184,8 @@ const ExpertPage = ({ navigation }) => {
           Expert Consultations
         </Text>
       </View>
+<View style={{ flex: 1, position: "relative",paddingTop:10 }}>
+
     <View >
       {renderCategoryTabs()}
       
@@ -226,6 +230,14 @@ const ExpertPage = ({ navigation }) => {
           );
         })}
       </ScrollView>
+       {userData?.isUserVerified === false &&
+          userData?.userType === "user" && (
+            <VerificationOverlay  
+              onVerify={() => navigation.navigate("Verification")}
+            />
+          )}
+</View>
+
     </SafeAreaView>
   );
 };

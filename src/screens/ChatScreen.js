@@ -22,6 +22,7 @@ import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import { timeAgo } from "../utils/time";
+import VerificationOverlay from "../components/VerificationOverlay";
 
 const initialLayout = { width: Dimensions.get("window").width };
 
@@ -29,6 +30,7 @@ const ChatScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const dispatch = useDispatch();
   const { chats, loading } = useSelector((state) => state.chatList);
+const { user: userData } = useSelector((state) => state.user);
 
   const currentUserId = auth().currentUser?.uid;
 
@@ -211,7 +213,7 @@ const renderScene = ({ route }) => {
           </Text>
         </TouchableOpacity>
       </View>
-
+<View style={{ flex: 1, position: "relative" }}>
       {/* 🔥 Swipeable Tabs */}
      <TabView
   navigationState={{ index, routes }}
@@ -281,6 +283,14 @@ const renderScene = ({ route }) => {
     </View>
   )}
 />
+ {userData?.isUserVerified === false &&
+    userData?.userType === "user" && (
+      <VerificationOverlay
+        onVerify={() => navigation.navigate("Verification")}
+      />
+    )}
+</View>
+   
     </SafeAreaView>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,7 +12,7 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
   const dispatch = useDispatch();
   const { questions: questionsMap, oralQuestions: oralQuestionsMap, bookmarks, loadingQuestions, loadingOralQuestions, questionCounts } = useSelector((state) => state.study);
   const [activeTab, setActiveTab] = useState(route.params?.isOral ? 'ORAL' : 'COC');
-
+  
   useEffect(() => {
     if (topicId) {
       if (activeTab === 'COC') {
@@ -50,8 +50,8 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
         <View style={styles.placeholderButton} />
       </View>
 
-      {/* Segmented Tab Controls */}
-      <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.textSecondary + '10' }]}>
+      {/* Segmented Tab Controls
+         <View style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.textSecondary + '10' }]}>
         <TouchableOpacity
           onPress={() => setActiveTab('COC')}
           style={[styles.tabItem, activeTab === 'COC' && [styles.activeTabItem, { borderBottomColor: colors.primary }]]}
@@ -71,7 +71,8 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
             Oral({counts.oralCount})
           </Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
+   
 
       {/* Progress / Context Banner */}
       <View style={[styles.contextBanner, { backgroundColor: colors.surface, borderBottomColor: colors.textSecondary + '10' }]}>
@@ -79,7 +80,7 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
           <View style={styles.modeIndicator}>
             <View style={[styles.dot, { backgroundColor: activeTab === 'ORAL' ? '#4CAF50' : '#2196F3' }]} />
             <Text style={[styles.modeText, { color: colors.text }]}>
-              {activeTab === 'ORAL' ? 'Oral Syllabus Q&A' : 'COC Oral Q&A Syllabus'}
+              {activeTab === 'ORAL' ? 'Oral Syllabus Q&A' : 'COC Written Q&A'}
             </Text>
           </View>
           <Text style={[styles.countText, { color: colors.textSecondary }]}>
@@ -106,7 +107,7 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
               <View style={[styles.questionCard, { backgroundColor: colors.surface }]}>
                 <View style={styles.cardHeader}>
                   {item.year ? (
-                    <View style={[styles.yearBadge, { backgroundColor: colors.primary + '10' }]}>
+                    <View style={[styles.yearBadge, { backgroundColor: colors.primary + '15' }]}>
                       <Text style={[styles.yearBadgeText, { color: colors.primary }]}>{item.year}</Text>
                     </View>
                   ) : <View />}
@@ -120,7 +121,7 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
                     }))}
                     style={styles.bookmarkBtn}
                   >
-                    <FontAwesome5 name="bookmark" size={14} color={isBookmarked ? '#FF8F00' : colors.textSecondary} solid={isBookmarked} />
+                    <FontAwesome5 name="bookmark" size={16} color={isBookmarked ? '#FF8F00' : colors.textSecondary + '50'} solid={isBookmarked} />
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
@@ -140,14 +141,25 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
                   }
                   style={styles.cardBody}
                 >
-                  <Text style={[styles.questionText, { color: colors.text }]} numberOfLines={3}>
+                  <Text style={[styles.questionText, { color: colors.text }]}>
                     {item.question}
                   </Text>
-                  <View style={[styles.readButton, { backgroundColor: colors.primary + '08' }]}>
-                    <Text style={[styles.readButtonText, { color: colors.primary }]}>
-                      Read Answer
-                    </Text>
-                    <FontAwesome5 name="arrow-right" size={10} color={colors.primary} />
+                  
+                  {item.questionImage ? (
+                    <View style={styles.imageContainer}>
+                      <Image source={{ uri: item.questionImage }} style={styles.questionImage} resizeMode="contain" />
+                    </View>
+                  ) : null}
+                  
+                  <View style={[styles.divider, { backgroundColor: colors.textSecondary + '15' }]} />
+
+                  <View style={styles.cardFooter}>
+                    <View style={[styles.readButton, { backgroundColor: colors.primary }]}>
+                      <Text style={[styles.readButtonText, { color: '#FFF' }]}>
+                        Read Answer
+                      </Text>
+                      <FontAwesome5 name="arrow-right" size={10} color="#FFF" />
+                    </View>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -158,11 +170,7 @@ const StudyQuestionsScreen = ({ route, navigation, colors }) => {
               <Text style={[styles.instructionTitle, { color: colors.text }]}>
                 Select a question to read standard guides
               </Text>
-              <Text style={[styles.instructionDesc, { color: colors.textSecondary }]}>
-                {activeTab === 'ORAL'
-                  ? 'Click any oral question below to open its verified detailed explanation formatted as an article.'
-                  : 'Click any syllabus question below to open its verified detailed explanation formatted as an article.'}
-              </Text>
+              
             </View>
           )}
           ListEmptyComponent={() => (
@@ -283,53 +291,74 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
+  
   questionCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+   
+    padding: 20,
+    marginBottom: 16,
+   
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   yearBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   yearBadgeText: {
-    fontSize: 9,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   bookmarkBtn: {
-    padding: 6,
+    padding: 4,
   },
   cardBody: {},
   questionText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 24,
     marginBottom: 12,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  questionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: 12,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   readButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   readButtonText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginRight: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    marginRight: 8,
   },
+
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',

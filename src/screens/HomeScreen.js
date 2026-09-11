@@ -7,6 +7,8 @@ import auth from '@react-native-firebase/auth';
 import { saveFcmToken } from '../utils/saveFcmToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BetaInfoModal from "../components/BetaInfoModal";
+import VerificationOverlay from "../components/VerificationOverlay";
+
 
 const HomeScreen = () => {
   const { user: userData } = useSelector((state) => state.user);
@@ -92,6 +94,8 @@ const HomeScreen = () => {
 
     checkNotificationPermission();
   }, []);
+  
+  
   return (
     <>
       {userData?.userType === "company" ? (
@@ -100,7 +104,7 @@ const HomeScreen = () => {
         <>
           <HomeScreenUser />
          
-        </>
+        </>  
       )}
     </>
   )

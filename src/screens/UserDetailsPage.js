@@ -265,7 +265,7 @@ const UserDetailsPage = ({ navigation, route }) => {
           ? userDoc.data().username
           : name.trim().replace(/\s+/g, "-").toLowerCase() + "-" + Math.floor(Math.random() * 10000);
       const userData = {
-        name, dob, bio, education, experiences, certifications,
+        name, dob, bio, education, experiences, certifications,  userType: "user",
         username, hasChecked: true, verificationRequested: true,remark: null,
         verificationRequestedAt: FieldValue.serverTimestamp(),
       };
@@ -316,12 +316,43 @@ const UserDetailsPage = ({ navigation, route }) => {
   };
   const removeCertification = (index) =>
     setCertifications(certifications.filter((_, i) => i !== index));
+const handleSkipVerification = async () => {
+  try {
+    setUploading(true);
 
+    const user = auth().currentUser;
+
+    if (!user) {
+      Alert.alert("Error", "User not found.");
+      return;
+    }
+
+    await firestore()
+      .collection("users")
+      .doc(user.uid)
+      .set(
+        {
+          hasChecked: true,
+          isSkippedVerification: true,
+            userType: "user",
+        },
+        { merge: true }
+      );
+
+    //navigation.navigate("Home");
+  } catch (err) {
+    console.error("Skip verification error:", err);
+    Alert.alert("Error", "Unable to skip verification.");
+  } finally {
+    setUploading(false);
+  }
+};
   // ─────────────────────────────────────────────
   //  RENDER
   // ─────────────────────────────────────────────
   return (
     <SafeAreaView style={premiumStyles.safe}>
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -331,6 +362,16 @@ const UserDetailsPage = ({ navigation, route }) => {
   colors={["#F7F7F9", "#FFFFFF", "#F7F7F9"]}
   style={StyleSheet.absoluteFill}
 />
+<TouchableOpacity
+    onPress={handleSkipVerification}
+    disabled={uploading}
+    activeOpacity={0.7}
+    style={premiumStyles.skipTopRight}
+  >
+    <Text style={premiumStyles.skipTopRightText}>
+      Skip
+    </Text>
+  </TouchableOpacity>
           <View style={premiumStyles.squareTopLeft} />
                   <View style={premiumStyles.squareRight} />
                   <View style={premiumStyles.squareBottomLeft} />
@@ -1069,4 +1110,18 @@ modalSub: {
     bottom: -160,
     left: -180,
   },
+  skipTopRight: {
+  position: "absolute",
+  top: 8,
+  right: 16,
+  zIndex: 100,
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+},
+
+skipTopRightText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#777",
+},
 });
